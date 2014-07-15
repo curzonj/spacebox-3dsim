@@ -1,6 +1,6 @@
 I'm playing around with:
 
-* [Phaser.js](http://phaser.io/)
+* [Three.js](http://threejs.org/)
 * [Require.js](http://requirejs.org/)
 * [Bower](http://bower.io/)
 
