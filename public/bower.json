@@ -1,0 +1,17 @@
+{
+  "name": "threejs-game1",
+  "version": "0.0.0",
+  "authors": [
+    "Jordan Curzon <curzonj@gmail.com>"
+  ],
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "requirejs": "latest",
+    "jquery": "latest"
+  },
+  "ignore": [
+    "**/.*",
+    "bower_components"
+  ]
+}
