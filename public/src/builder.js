@@ -14,7 +14,9 @@ define(['three', './container', 'VRMLLoader', 'TrackballControls'], function(THR
             this.scene.add(cube);
         },
         addCone: function() {
-            var cylinder = new THREE.Mesh(new THREE.CylinderGeometry(0, 100, 400, 50, 50, false), new THREE.MeshNormalMaterial());
+            var geom = new THREE.CylinderGeometry(0, 10, 40, 50, 50, false);
+            var mat = new THREE.MeshNormalMaterial();
+            var cylinder = new THREE.Mesh(geom, mat);
             cylinder.overdraw = true;
             this.scene.add(cylinder);
         },
@@ -67,13 +69,14 @@ define(['three', './container', 'VRMLLoader', 'TrackballControls'], function(THR
         },
         start: function() {
 
-            var camera = this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.z = 5;
+            var camera = this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+            camera.position.z = 300;
 
             this.addControls();
 
             var scene = this.scene = new THREE.Scene();
             scene.add(camera);
+            scene.add(new THREE.GridHelper(500, 100));
 
             var dirLight = new THREE.DirectionalLight(0xffffff);
             dirLight.position.set(200, 200, 1000).normalize();
