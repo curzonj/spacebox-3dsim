@@ -8,7 +8,9 @@
   "private": true,
   "dependencies": {
     "requirejs": "latest",
-    "jquery": "latest"
+    "jquery": "latest",
+    "threex.planets": "https://github.com/jeromeetienne/threex.planets/archive/master.zip",
+    "threex.spaceships": "https://github.com/curzonj/threex.spaceships/archive/master.zip"
   },
   "ignore": [
     "**/.*",

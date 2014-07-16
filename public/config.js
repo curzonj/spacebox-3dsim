@@ -7,11 +7,24 @@
                 exports: 'THREE'
             },
             VRMLLoader: {
-                deps: ['threeCore'],
-                exports: 'THREE'
+                deps: ['threeCore']
+            },
+            OBJMTLLoader: {
+                deps: ['threeCore', 'MTLLoader']
+            },
+            MTLLoader: {
+                deps: ['threeCore']
+            },
+            'threex.planets/package.require': {
+                deps: ['threeCore']
+            },
+            'threex.spaceships/package.require': {
+                deps: ['threeCore', 'OBJMTLLoader']
             },
             TrackballControls: {
-                deps: ['threeCore'],
+                deps: [
+                    'threeCore'
+                ],
                 exports: 'THREE'
             },
             detector: {
@@ -25,6 +38,8 @@
             three: 'lib/shims/three',
             threeCore: 'lib/three.js-r67/build/three.min',
             TrackballControls: 'lib/three.js-r67/examples/js/controls/TrackballControls',
+            OBJMTLLoader: 'lib/three.js-r67/examples/js/loaders/OBJMTLLoader',
+            MTLLoader: 'lib/three.js-r67/examples/js/loaders/MTLLoader',
             VRMLLoader: 'lib/three.js-r67/examples/js/loaders/VRMLLoader',
             detector: 'lib/three.js-r67/examples/js/Detector',
             stats: 'lib/three.js-r67/examples/js/libs/stats.min',
@@ -32,7 +47,9 @@
             shader: 'lib/requirejs_plugins/shader',
             shaders: 'src/shaders',
             requirejs: 'bower_components/requirejs/require',
-            jquery: 'bower_components/jquery/dist/jquery'
+            jquery: 'bower_components/jquery/dist/jquery',
+            'threex.planets': 'bower_components/threex.planets',
+            'threex.spaceships': 'bower_components/threex.spaceships'
         },
         packages: [
 

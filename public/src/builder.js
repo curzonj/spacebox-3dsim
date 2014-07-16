@@ -1,4 +1,5 @@
-define(['three', './container', 'VRMLLoader', 'TrackballControls'], function(THREE, container) {
+define(['three', './container', 'TrackballControls'], function(THREE, container) {
+
     'use strict';
 
     function Builder() {}
@@ -70,13 +71,13 @@ define(['three', './container', 'VRMLLoader', 'TrackballControls'], function(THR
         start: function() {
 
             var camera = this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
-            camera.position.z = 300;
+            camera.position.z = 5;
 
             this.addControls();
 
             var scene = this.scene = new THREE.Scene();
             scene.add(camera);
-            scene.add(new THREE.GridHelper(500, 100));
+            scene.add(new THREE.GridHelper(200, 10));
 
             var dirLight = new THREE.DirectionalLight(0xffffff);
             dirLight.position.set(200, 200, 1000).normalize();
@@ -84,7 +85,14 @@ define(['three', './container', 'VRMLLoader', 'TrackballControls'], function(THR
             camera.add(dirLight);
             camera.add(dirLight.target);
 
-            this.addCone();
+            var starSphere = THREEx.Planets.createStarfield();
+            scene.add(starSphere);
+
+            THREEx.SpaceShips.loadSpaceFighter01(function(object3d) {
+                // object3d is the loaded spacefighter
+                // now we add it to the scene
+                scene.add(object3d);
+            });
 
             var renderer = this.renderer = new THREE.WebGLRenderer();
             renderer.setSize(window.innerWidth, window.innerHeight);

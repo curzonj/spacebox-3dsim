@@ -1,0 +1,12 @@
+{
+  "name": "threex.spaceships",
+  "_cacheHeaders": {
+    "ETag": "\"0e4b2527c242d7d1d0147ce3a89ad0e8e2e2412d\"",
+    "Content-Type": "application/zip",
+    "Content-Disposition": "attachment; filename=threex.spaceships-master.zip"
+  },
+  "_release": "e-tag:0e4b2527c",
+  "_source": "https://github.com/curzonj/threex.spaceships/archive/master.zip",
+  "_target": "*",
+  "_originalSource": "https://github.com/curzonj/threex.spaceships/archive/master.zip"
+}
