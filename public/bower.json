@@ -10,7 +10,8 @@
     "requirejs": "latest",
     "jquery": "latest",
     "threex.planets": "https://github.com/curzonj/threex.planets.git",
-    "threex.spaceships": "https://github.com/curzonj/threex.spaceships.git"
+    "threex.spaceships": "https://github.com/curzonj/threex.spaceships.git",
+    "threex.laser": "https://github.com/curzonj/threex.laser.git"
   },
   "ignore": [
     "**/.*",

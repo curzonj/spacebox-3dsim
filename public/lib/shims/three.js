@@ -2,7 +2,8 @@
 define([
     "threeCore",
     'threex.planets/package.require',
-    'threex.spaceships/package.require'
+    'threex.spaceships/package.require',
+    'threex.laser/package.require'
 ], function(threeCore) {
     return threeCore;
 });

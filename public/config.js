@@ -18,6 +18,9 @@
             'threex.planets/package.require': {
                 deps: ['threeCore']
             },
+            'threex.laser/package.require': {
+                deps: ['threeCore']
+            },
             'threex.spaceships/package.require': {
                 deps: ['threeCore', 'OBJMTLLoader']
             },
@@ -46,7 +49,8 @@
             requirejs: 'bower_components/requirejs/require',
             jquery: 'bower_components/jquery/dist/jquery',
             'threex.planets': 'bower_components/threex.planets',
-            'threex.spaceships': 'bower_components/threex.spaceships'
+            'threex.spaceships': 'bower_components/threex.spaceships',
+            'threex.laser': 'bower_components/threex.laser'
         },
         packages: [
 
