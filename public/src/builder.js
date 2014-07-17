@@ -6,44 +6,6 @@ define(['three', './container', 'TrackballControls'], function(THREE, container)
 
     Builder.prototype = {
         constructor: Builder,
-        addCube: function() {
-            var geometry = new THREE.CubeGeometry(1, 1, 1);
-            var material = new THREE.MeshLambertMaterial({
-                color: 0xCC0000
-            });
-            var cube = this.object = new THREE.Mesh(geometry, material);
-            this.scene.add(cube);
-        },
-        addCone: function() {
-            var geom = new THREE.CylinderGeometry(0, 10, 40, 50, 50, false);
-            var mat = new THREE.MeshNormalMaterial();
-            var cylinder = new THREE.Mesh(geom, mat);
-            cylinder.overdraw = true;
-            this.scene.add(cylinder);
-        },
-        addShip: function() {
-            var ctx = this;
-            var loader = new THREE.VRMLLoader();
-            loader.addEventListener('load', function(event) {
-
-                ctx.scene.add(event.content);
-
-            });
-            loader.load("/assets/ship.wrl");
-        },
-        addLathe: function() {
-            var points = [];
-            for (var i = 0; i < 10; i++) {
-                points.push(new THREE.Vector3(Math.sin(i * 0.2) * 15 + 50, 0, (i - 5) * 2));
-
-            }
-            var geometry = new THREE.LatheGeometry(points);
-            var material = new THREE.MeshBasicMaterial({
-                color: 0xffff00
-            });
-            var lathe = this.object = new THREE.Mesh(geometry, material);
-            this.scene.add(lathe);
-        },
         onWindowResize: function() {
 
             this.camera.aspect = window.innerWidth / window.innerHeight;
@@ -77,7 +39,7 @@ define(['three', './container', 'TrackballControls'], function(THREE, container)
 
             var scene = this.scene = new THREE.Scene();
             scene.add(camera);
-            scene.add(new THREE.GridHelper(200, 10));
+            scene.add(new THREE.GridHelper(1100, 50));
 
             var dirLight = new THREE.DirectionalLight(0xffffff);
             dirLight.position.set(200, 200, 1000).normalize();
@@ -85,12 +47,20 @@ define(['three', './container', 'TrackballControls'], function(THREE, container)
             camera.add(dirLight);
             camera.add(dirLight.target);
 
-            var starSphere = THREEx.Planets.createStarfield();
+            var starSphere = THREEx.Planets.createStarfield(1000);
             scene.add(starSphere);
 
             THREEx.SpaceShips.loadSpaceFighter01(function(object3d) {
                 // object3d is the loaded spacefighter
                 // now we add it to the scene
+                object3d.position = new THREE.Vector3(2, 2, 2);
+                scene.add(object3d);
+            });
+
+            THREEx.SpaceShips.loadSpaceFighter02(function(object3d) {
+                // object3d is the loaded spacefighter
+                // now we add it to the scene
+                object3d.position = new THREE.Vector3(-2, -2, -2);
                 scene.add(object3d);
             });
 

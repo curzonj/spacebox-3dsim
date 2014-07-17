@@ -1,13 +1,12 @@
 {
   "name": "threex.planets",
-  "_cacheHeaders": {
-    "ETag": "\"3de707594b1178ba32c62199bf29efdf90f59cf0\"",
-    "Content-Type": "application/zip",
-    "Content-Disposition": "attachment; filename=threex.planets-master.zip"
+  "homepage": "https://github.com/curzonj/threex.planets",
+  "_release": "80b6a7a",
+  "_resolution": {
+    "type": "commit",
+    "commit": "80b6a7a"
   },
-  "_release": "e-tag:3de707594",
-  "_source": "https://github.com/jeromeetienne/threex.planets/archive/master.zip",
-  "_target": "*",
-  "_originalSource": "https://github.com/jeromeetienne/threex.planets/archive/master.zip",
-  "_direct": true
+  "_source": "https://github.com/curzonj/threex.planets.git",
+  "_target": "80b6a7a",
+  "_originalSource": "https://github.com/curzonj/threex.planets.git"
 }
