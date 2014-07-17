@@ -1,4 +1,4 @@
-define(['three', './container', 'TrackballControls'], function(THREE, container) {
+define(['three', './container', 'OrbitControls'], function(THREE, container) {
 
     'use strict';
 
@@ -17,11 +17,11 @@ define(['three', './container', 'TrackballControls'], function(THREE, container)
 
         },
         addControls: function() {
-            var controls = this.controls = new THREE.TrackballControls(this.camera);
+            var controls = this.controls = new THREE.OrbitControls(this.camera);
 
-            controls.rotateSpeed = 5.0;
-            controls.zoomSpeed = 5;
-            controls.panSpeed = 2;
+            controls.rotateSpeed = 2.0;
+            controls.zoomSpeed = 1;
+            controls.panSpeed = 3;
 
             controls.noZoom = false;
             controls.noPan = false;

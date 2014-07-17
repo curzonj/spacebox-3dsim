@@ -21,11 +21,8 @@
             'threex.spaceships/package.require': {
                 deps: ['threeCore', 'OBJMTLLoader']
             },
-            TrackballControls: {
-                deps: [
-                    'threeCore'
-                ],
-                exports: 'THREE'
+            OrbitControls: {
+                deps: [ 'threeCore' ]
             },
             detector: {
                 exports: 'Detector'
@@ -37,7 +34,7 @@
         paths: {
             three: 'lib/shims/three',
             threeCore: 'lib/three.js-r67/build/three.min',
-            TrackballControls: 'lib/three.js-r67/examples/js/controls/TrackballControls',
+            OrbitControls: 'lib/three.js-r67/examples/js/controls/OrbitControls',
             OBJMTLLoader: 'lib/three.js-r67/examples/js/loaders/OBJMTLLoader',
             MTLLoader: 'lib/three.js-r67/examples/js/loaders/MTLLoader',
             VRMLLoader: 'lib/three.js-r67/examples/js/loaders/VRMLLoader',

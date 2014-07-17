@@ -1,7 +1,7 @@
+var THREEx = THREEx || {};
+
 (function() {
     "use strict";
-
-    var THREEx = THREEx || {};
 
     THREEx.SpaceShips = {};
 

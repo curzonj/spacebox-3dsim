@@ -9,8 +9,8 @@
   "dependencies": {
     "requirejs": "latest",
     "jquery": "latest",
-    "threex.planets": "https://github.com/curzonj/threex.planets.git#80b6a7a",
-    "threex.spaceships": "https://github.com/curzonj/threex.spaceships.git#3302adc"
+    "threex.planets": "https://github.com/curzonj/threex.planets.git",
+    "threex.spaceships": "https://github.com/curzonj/threex.spaceships.git"
   },
   "ignore": [
     "**/.*",

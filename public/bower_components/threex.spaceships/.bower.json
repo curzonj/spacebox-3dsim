@@ -1,12 +1,13 @@
 {
   "name": "threex.spaceships",
   "homepage": "https://github.com/curzonj/threex.spaceships",
-  "_release": "3302adc",
+  "_release": "f5ad8724dc",
   "_resolution": {
-    "type": "commit",
-    "commit": "3302adc"
+    "type": "branch",
+    "branch": "master",
+    "commit": "f5ad8724dc5da46886fe0b648e53b5eb86c9fc69"
   },
   "_source": "https://github.com/curzonj/threex.spaceships.git",
-  "_target": "3302adc",
+  "_target": "*",
   "_originalSource": "https://github.com/curzonj/threex.spaceships.git"
 }
