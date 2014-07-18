@@ -1,0 +1,4 @@
+define([
+    './wobble',
+    './shooting'
+], function() { });

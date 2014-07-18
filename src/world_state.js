@@ -81,6 +81,8 @@
         // ticked by the handlers. This is the
         // traditional NPCs.
         worldTick: function() {
+            // TODO the tickNumber should be synced with
+            // worldstate mutations
             var tickNumber = this.currentTick();
 
             listeners.forEach(function(h) {

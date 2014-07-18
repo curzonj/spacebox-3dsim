@@ -1,86 +1,104 @@
-define(['three', './scene' ], function(THREE, scene) {
+define(['three', './scene'], function(THREE, scene) {
 
     'use strict';
 
     function WorldState() {
-        this.shipList = [];
+        this.worldState = {};
+        this.handlers = [];
+        this.mutators = [];
     }
 
-    Math.radians = function(degrees) {
-        return degrees * Math.PI / 180;
-    };
+    /*
+     * THIS IS THE MESSAGE SCHEMA
+    key: key,
+    previous: oldRev,
+    version: newRev,
+    values: patch
+    */
 
     WorldState.prototype = {
-        onMessage: function(tickMs, e) {
-            /*
-            key: key,
-            previous: oldRev,
-            version: newRev,
-            values: patch
-            */
+        get: function() {
+            return this.worldState;
+        },
+        registerHandler: function(type, fn) {
+            this.handlers.push({
+                type: type,
+                fn: fn
+            });
+        },
+        registerMutator: function(list, fn) {
+            this.mutators.push({
+                list: list,
+                fn: fn
+            });
+        },
+        initialState: function(currentTick, timestamp, msg) {
+            this.worldState[msg.key] = {
+                state: msg.values,
+                type: msg.values.type,
+                version: msg.version
+            };
+        },
+        updateState: function(currentTick, timestamp, msg) {
+            var current = this.worldState[msg.key];
 
+            if (msg.previous != current.version) {
+                console.log({
+                    type: "revisionError",
+                    expected: msg.previous,
+                    found: current.version,
+                    key: msg.key
+                });
+            }
+
+            current.version = msg.version;
+
+            for (var attrname in msg.values) {
+                current.state[attrname] = msg.values[attrname];
+            }
+        },
+        notifyMutators: function(currentTick, timestamp, msg) {
+            this.mutators.forEach(function(o) {
+                // Test that this change message has all the required fields
+                var gonogo = o.list.reduce(
+                    function(previousValue, currentValue, index, array) {
+                        return previousValue &&
+                            msg.values[currentValue] !== undefined;
+                    }
+                );
+
+                if (gonogo) {
+                    try {
+                        o.fn(currentTick, timestamp, msg);
+                    } catch (err) {
+                        console.log(err);
+                    }
+                }
+            });
+        },
+        notifyHandlers: function(currentTick, timestamp, msg) {
+            this.handlers.forEach(function(o) {
+                if (o.type == msg.values.type) {
+                    try {
+                        o.fn(currentTick, timestamp, msg);
+                    } catch (err) {
+                        console.log(err);
+                    }
+                }
+            });
+        },
+        onStateChange: function(currentTick, timestamp, msg) {
             // TODO messages that update things can come before the 
             // messages to create those things. deal with it
-            try {
-                var msg = JSON.parse(e.data);
-                switch (msg.type) {
-                    case "state":
-                        if (msg.state.previous === 0) {
-                            // TODO add support for more world elements
-                            this.addSpaceship(msg.state.values);
-                        } else if (msg.state.values.x_rotation !== undefined) {
-                            this.wobble(msg.state.values);
-                        } else if (msg.state.values.shooting !== undefined) {
-                            this.shootSpaceship();
-                        }
-                        break;
-                }
 
-            } catch (err) {
-                console.log(err);
+            if (msg.previous === 0) {
+                this.notifyHandlers(currentTick, timestamp, msg);
+                this.initialState(currentTick, timestamp, msg);
+            } else {
+                this.notifyMutators(currentTick, timestamp, msg);
+                this.updateState(currentTick, timestamp, msg);
             }
-        },
-        wobble: function(msg) {
-            this.shipList.forEach(function(ship) {
-                ship.rotation.x = msg.x_rotation;
-            });
-        },
-        addSpaceship: function(server_obj) {
-            var ctx = this;
-            THREEx.SpaceShips.loadSpaceFighter01(function(object3d) {
-                ctx.shipList.push(object3d);
-                object3d.serverId = server_obj.id;
-
-                var v = server_obj.position;
-                object3d.position = new THREE.Vector3(v.x, v.y, v.z);
-                scene.add(object3d);
-            });
-        },
-        shootSpaceship: function() {
-            var ship1 = this.shipList[0];
-            var ship2 = this.shipList[1];
-
-            if (!ship1 || !ship2) {
-                return;
-            }
-
-            var laserBeam = new THREEx.LaserBeam();
-            laserBeam.object3d.position.copy(ship1.position);
-
-            laserBeam.setTarget = function(position) {
-                this.object3d.lookAt(position);
-                this.object3d.rotateOnAxis(this.object3d.up, Math.radians(-90));
-
-                var distance = this.object3d.position.distanceTo(position);
-                this.object3d.scale.x = distance;
-            };
-
-            scene.add(laserBeam.object3d);
-            var laserCooked = new THREEx.LaserCooked(laserBeam);
-
-            laserBeam.setTarget(ship2.position);
         }
-
     };
 
     return new WorldState();

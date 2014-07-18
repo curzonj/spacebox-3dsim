@@ -1,4 +1,4 @@
-define(['three', './renderer', './camera', './controls', './scene', './world_state'], function(THREE, renderer, camera, controls, scene, worldState) {
+define(['three', './renderer', './camera', './controls', './scene', './world_state', './world_tickers/load_all'], function(THREE, renderer, camera, controls, scene, worldState) {
 
     'use strict';
 
@@ -30,14 +30,20 @@ define(['three', './renderer', './camera', './controls', './scene', './world_sta
             connection.onmessage = this.onMessage.bind(this);
         },
         onMessage: function(e) {
-            this.pendingCommands.push(e);
+            var msg = JSON.parse(e.data);
+
+            switch (msg.type) {
+                case "state":
+                    this.pendingCommands.push(msg);
+                break;
+            }
         },
         updateScene: function(tickMs) {
             var list = this.pendingCommands;
             this.pendingCommands = [];
 
             list.forEach(function(cmd) {
-                worldState.onMessage(tickMs, cmd);
+                worldState.onStateChange(tickMs, cmd.timestamp, cmd.state);
             });
         },
         tickInternal: 80,
