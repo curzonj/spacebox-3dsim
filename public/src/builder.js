@@ -48,53 +48,12 @@ define(['three', './container', 'OrbitControls'], function(THREE, container) {
             var starSphere = THREEx.Planets.createStarfield(1000);
             scene.add(starSphere);
 
-            var shipList = this.shipList = [];
-            var ship1;
-            var ship2;
-
-
-
-
+            this.shipList = [];
             this.lastTimeMsec = 0;
-            THREEx.SpaceShips.loadSpaceFighter01(function(object3d) {
-                shipList.push(object3d);
-                ship1 = object3d;
 
-                object3d.position = new THREE.Vector3(2, 2, 2);
-                scene.add(object3d);
-
-                var laserBeam = new THREEx.LaserBeam();
-                laserBeam.object3d.position.copy(ship1.position);
-
-                Math.radians = function(degrees) {
-                  return degrees * Math.PI / 180;
-                };
-
-                laserBeam.setTarget = function(position) {
-                    this.object3d.lookAt(position);
-                    this.object3d.rotateOnAxis(this.object3d.up, Math.radians(-90));
-
-                    var distance = this.object3d.position.distanceTo(position);
-                    this.object3d.scale.x = distance;
-                };
-
-                scene.add(laserBeam.object3d);
-                var laserCooked = new THREEx.LaserCooked(laserBeam);
-
-                onRenderFns.push(function(delta, now) {
-                    if (ship2) {
-                        laserBeam.setTarget(ship2.position);
-                    }
-                });
-            });
-
-            THREEx.SpaceShips.loadSpaceFighter02(function(object3d) {
-                shipList.push(object3d);
-                ship2 = object3d;
-
-                object3d.position = new THREE.Vector3(-2, -2, -2);
-                scene.add(object3d);
-            });
+            Math.radians = function(degrees) {
+                return degrees * Math.PI / 180;
+            };
 
             var renderer = this.renderer = new THREE.WebGLRenderer();
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -104,14 +63,85 @@ define(['three', './container', 'OrbitControls'], function(THREE, container) {
 
             window.addEventListener('resize', this.onWindowResize.bind(this), false);
 
+            this.openConnection();
             this.render(0);
         },
-        updateScene: function(nowMsec) {
-            var a = Math.sin(nowMsec / 500);
+        addSpaceship: function(server_obj) {
+            var ctx = this;
+            THREEx.SpaceShips.loadSpaceFighter01(function(object3d) {
+                ctx.shipList.push(object3d);
+                object3d.serverId = server_obj.id;
+
+                var v = server_obj.position;
+                object3d.position = new THREE.Vector3(v.x, v.y, v.z);
+                ctx.scene.add(object3d);
+            });
+        },
+        shootSpaceship: function() {
+            var ship1 = this.shipList[0];
+            var ship2 = this.shipList[1];
+
+            if (!ship1 || !ship2) {
+                return;
+            }
+
+            var laserBeam = new THREEx.LaserBeam();
+            laserBeam.object3d.position.copy(ship1.position);
+
+            laserBeam.setTarget = function(position) {
+                this.object3d.lookAt(position);
+                this.object3d.rotateOnAxis(this.object3d.up, Math.radians(-90));
+
+                var distance = this.object3d.position.distanceTo(position);
+                this.object3d.scale.x = distance;
+            };
+
+            this.scene.add(laserBeam.object3d);
+            var laserCooked = new THREEx.LaserCooked(laserBeam);
+
+            laserBeam.setTarget(ship2.position);
+        },
+        openConnection: function() {
+            var ctx = this;
+            var connection = new WebSocket('ws://localhost:8080/test');
+
+            // When the connection is open, send some data to the server
+            connection.onopen = function() {
+                connection.send('Ping'); // Send the message 'Ping' to the server
+            };
+
+            // Log errors
+            connection.onerror = function(error) {
+                console.log('WebSocket Error');
+                console.log(error);
+            };
+
+
+            // Log messages from the server
+            connection.onmessage = function(e) {
+                var msg = JSON.parse(e.data);
+                switch (msg.command) {
+                    case "addSpaceship":
+                        ctx.addSpaceship(msg);
+                        break;
+                    case "shootSpaceship":
+                        ctx.shootSpaceship();
+                        break;
+                    case "wobble":
+                        ctx.wobble(msg);
+                        break;
+                }
+            };
+        },
+        wobble: function(msg) {
+            var a = Math.sin(msg.timestamp / 500);
 
             this.shipList.forEach(function(ship) {
                 ship.rotation.x = a;
             });
+        },
+        updateScene: function(nowMsec) {
+
         },
         render: function(nowMsec) {
             var callback = this.render.bind(this);

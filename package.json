@@ -2,7 +2,8 @@
   "name": "threejs-game1",
   "version": "0.0.0",
   "dependencies": {
-    "bower": ">=0.0.0",
-    "bower-requirejs": ">=0.0.0"
+    "bower": "latest",
+    "ws": "latest",
+    "bower-requirejs": "latest"
   }
 }
