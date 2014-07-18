@@ -6,52 +6,26 @@
             port: 8080
         });
 
-    var connections = [];
-
-    console.log("connection opened");
-
-    function wsend(ws, obj) {
-        ws.send(JSON.stringify(obj));
-    }
+    var Handler = require('./handler.js');
+    var handlerList = [];
 
     wss.on('connection', function(ws) {
-        ws.on('message', function(message) {
-            console.log('received: %s', message);
-        });
-
-        ws.on('close', function() {
-            // TODO this is is a race condition
-            var index = connections.indexOf(ws);
-            connections.splice(index, 1);
-
-            console.log('disconnected');
-        });
-
-        wsend(ws, {
-            command: "addSpaceship",
-            id: 1,
-            position: { x: 2, y: 2, z: 2 }
-        });
-
-        wsend(ws, {
-            command: "addSpaceship",
-            id: 2,
-            position: { x: -2, y: -2, z: -2 }
-        });
-
-        connections.push(ws);
+        var handler = new Handler(ws);
+        handlerList.push(handler);
 
         setTimeout(function() {
-            wsend(ws, {
+            handler.send({
                 command: "shootSpaceship"
             });
         }, 5000);
     });
 
     setInterval(function() {
-        connections.forEach(function(ws) {
+        handlerList.forEach(function(h) {
             var ms = new Date().getTime();
-            wsend(ws, { command: "wobble", timestamp: ms });
+            h.onWorldStateChange(ms);
         });
-    }, 50);
+    }, 80);
+
+    console.log("server ready");
 })();
