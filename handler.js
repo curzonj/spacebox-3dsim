@@ -1,11 +1,14 @@
 (function() {
     'use strict';
 
+    var worldState = require('./world_state.js');
+    var multiuser = require('./multiuser.js');
+
     var Handler = module.exports = function(ws) {
         this.ws = ws;
 
-        this.onConnectionOpen();
         this.setupConnectionCallbacks();
+        this.onConnectionOpen();
     };
 
     Handler.prototype = {
@@ -14,47 +17,68 @@
             this.ws.on('message', this.onWSMessageReceived.bind(this));
             this.ws.on('close', this.onConnectionClosed.bind(this));
         },
+        onConnectionOpen: function() {
+            // We listen for updates so that we don't
+            // miss any updates while we fetch the
+            // full state.
+            worldState.addListener(this);
+
+            this.sendWorldState();
+
+            // TODO put the spaceship in space, but you have
+            // to get it from the `centeral storage`
+            // worldState.mutateWorldState({ });
+
+            multiuser.onClientJoined(this);
+        },
+        onConnectionClosed: function() {
+            worldState.removeListener(this);
+
+            console.log('disconnected');
+        },
         onWSMessageReceived: function(message) {
-            // TODO this is where we'd handle commands from the client
+            // NOTE this is where we'd handle commands from the client
             console.log('received: %s', message);
 
+            // NOTE you'll receive this change from the world
+            // state so you don't need to send it directly
+            // to the client
+            // worldState.mutateWorldState(stateChange);
+        },
+        sendState: function(obj) {
+            this.send({
+                type: "state",
+                state: obj
+            });
         },
         send: function(obj) {
             this.ws.send(JSON.stringify(obj));
         },
-        onConnectionOpen: function() {
-            this.sendWorldState();
-        },
         sendWorldState: function() {
-            this.send({
-                command: "addSpaceship",
-                id: 1,
-                position: {
-                    x: 2,
-                    y: 2,
-                    z: 2
-                }
-            });
+            var state = worldState.getWorldState();
 
-            this.send({
-                command: "addSpaceship",
-                id: 2,
-                position: {
-                    x: -2,
-                    y: -2,
-                    z: -2
-                }
+            for (var key in state) {
+                var obj = state[key];
+                this.sendState({
+                    key: key,
+                    previous: 0,
+                    version: obj.rev,
+                    values: obj.values
+                });
+            }
+        },
+        onWorldStateChange: function(key, oldRev, newRev, patch) {
+            this.sendState({
+                key: key,
+                previous: oldRev,
+                version: newRev,
+                values: patch
             });
         },
-        onConnectionClosed: function() {
-            var index = connections.indexOf(ws);
-            connections.splice(index, 1);
 
-            console.log('disconnected');
-        },
+        // this is called on every tick
+        worldTick: function(tickMs) {
 
-        onWorldStateChange: function(tickMs) {
-            this.send({ command: "wobble", timestamp: tickMs });
         }
     };
 

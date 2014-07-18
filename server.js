@@ -6,26 +6,15 @@
             port: 8080
         });
 
-    var Handler = require('./handler.js');
-    var handlerList = [];
+    require("./world_tickers/load_all.js");
 
+    var worldState = require('./world_state.js');
+    worldState.runWorldTicker();
+
+    var Handler = require('./handler.js');
     wss.on('connection', function(ws) {
         var handler = new Handler(ws);
-        handlerList.push(handler);
-
-        setTimeout(function() {
-            handler.send({
-                command: "shootSpaceship"
-            });
-        }, 5000);
     });
-
-    setInterval(function() {
-        handlerList.forEach(function(h) {
-            var ms = new Date().getTime();
-            h.onWorldStateChange(ms);
-        });
-    }, 80);
 
     console.log("server ready");
 })();

@@ -66,6 +66,34 @@ define(['three', './container', 'OrbitControls'], function(THREE, container) {
             this.openConnection();
             this.render(0);
         },
+        onMessage: function(e) {
+            /*
+            key: key,
+            previous: oldRev,
+            version: newRev,
+            values: patch
+            */
+
+            try {
+                var msg = JSON.parse(e.data);
+                switch (msg.type) {
+                    case "state":
+                        if (msg.state.previous === 0) {
+                            // TODO add support for more world elements
+                            this.addSpaceship(msg.state.values);
+                        } else if(msg.state.values.x_rotation !== undefined){
+                            this.wobble(msg.state.values);
+                        } else if(msg.state.values.shooting !== undefined){
+                            this.shootSpaceship();
+                        }
+                        break;
+                }
+
+            } catch (err) {
+                console.log(err.message);
+                console.log(e.data);
+            }
+        },
         addSpaceship: function(server_obj) {
             var ctx = this;
             THREEx.SpaceShips.loadSpaceFighter01(function(object3d) {
@@ -116,28 +144,11 @@ define(['three', './container', 'OrbitControls'], function(THREE, container) {
                 console.log(error);
             };
 
-
-            // Log messages from the server
-            connection.onmessage = function(e) {
-                var msg = JSON.parse(e.data);
-                switch (msg.command) {
-                    case "addSpaceship":
-                        ctx.addSpaceship(msg);
-                        break;
-                    case "shootSpaceship":
-                        ctx.shootSpaceship();
-                        break;
-                    case "wobble":
-                        ctx.wobble(msg);
-                        break;
-                }
-            };
+            connection.onmessage = this.onMessage.bind(this);
         },
         wobble: function(msg) {
-            var a = Math.sin(msg.timestamp / 500);
-
             this.shipList.forEach(function(ship) {
-                ship.rotation.x = a;
+                ship.rotation.x = msg.x_rotation;
             });
         },
         updateScene: function(nowMsec) {
