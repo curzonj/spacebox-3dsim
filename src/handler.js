@@ -45,21 +45,25 @@
             // to the client
             // worldState.mutateWorldState(stateChange);
         },
-        sendState: function(obj) {
+        sendState: function(ts, obj) {
             this.send({
                 type: "state",
+                timestamp: ts,
                 state: obj
             });
         },
         send: function(obj) {
+            console.log(obj);
             this.ws.send(JSON.stringify(obj));
         },
         sendWorldState: function() {
+            // TODO the worldstate itself should have a better sense of time
+            var ts = worldState.currentTick();
             var state = worldState.getWorldState();
 
             for (var key in state) {
                 var obj = state[key];
-                this.sendState({
+                this.sendState(ts, {
                     key: key,
                     previous: 0,
                     version: obj.rev,
@@ -67,8 +71,8 @@
                 });
             }
         },
-        onWorldStateChange: function(key, oldRev, newRev, patch) {
-            this.sendState({
+        onWorldStateChange: function(ts, key, oldRev, newRev, patch) {
+            this.sendState(ts, {
                 key: key,
                 previous: oldRev,
                 version: newRev,

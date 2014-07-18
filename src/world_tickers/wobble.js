@@ -1,7 +1,9 @@
 (function() {
     'use strict';
 
-    var worldState = require('../world_state.js');
+    var worldState = require('../world_state.js'),
+        multiuser = require('../multiuser.js');
+
     var spaceships = [];
 
     var obj = {
@@ -17,12 +19,24 @@
                 });
             });
         },
-        onWorldStateChange: function(key, oldRev, newRev, patch) {
+        onClientJoined: function(handler) {
+            setTimeout(function() {
+                var state = worldState.getWorldState();
+                var ship1 = state[1];
+
+                worldState.mutateWorldState(1, ship1.rev, {
+                    shooting: 2
+                });
+            }, 5000);
+        },
+        onWorldStateChange: function(ts, key, oldRev, newRev, patch) {
             if (oldRev === 0 && patch.type == "spaceship") {
                 spaceships.push(key);
             }
         }
     };
+
+    multiuser.addListener(obj);
 
     // NOTE the world tickers are responsible for loading
     // content into the world when it first launches

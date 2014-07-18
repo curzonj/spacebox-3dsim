@@ -25,8 +25,9 @@
         },
 
         // handlers call this to send us state changes
-        // TODO this needs to sync tick time
         mutateWorldState: function(key, expectedRev, patch) {
+            // TODO this needs to sync tick time
+            var ts = this.currentTick();
             var old = worldStateStorage[key] || { rev: 0, values: {} };
 
             if (worldStateStorage[key] === undefined) {
@@ -51,7 +52,7 @@
 
             // broadcast the change to all the listeners
             listeners.forEach(function(h) {
-                h.onWorldStateChange(key, oldRev, newRev, patch);
+                h.onWorldStateChange(ts, key, oldRev, newRev, patch);
             });
         },
 
@@ -68,13 +69,19 @@
             setInterval(this.worldTick.bind(this), this.tickInterval);
         },
 
+        currentTick: function() {
+            var ms = new Date().getTime();
+            var tickNumber = ms - (ms % this.tickInterval);
+
+            return tickNumber;
+        },
+
         // NOTE this ticks everything that isn't
         // controled by external logic, those are
         // ticked by the handlers. This is the
         // traditional NPCs.
         worldTick: function() {
-            var ms = new Date().getTime();
-            var tickNumber = ms - (ms % this.tickInterval);
+            var tickNumber = this.currentTick();
 
             listeners.forEach(function(h) {
                 h.worldTick(tickNumber);
