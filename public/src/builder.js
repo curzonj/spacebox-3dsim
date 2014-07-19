@@ -3,7 +3,9 @@ define(['three', './renderer', './camera', './controls', './scene', './world_sta
     'use strict';
 
     function Builder() {
+        this.tickInterval = 80;
         this.pendingCommands = [];
+
         this.renderCallback = this.render.bind(this);
     }
 
@@ -46,10 +48,13 @@ define(['three', './renderer', './camera', './controls', './scene', './world_sta
                 worldState.onStateChange(tickMs, cmd.timestamp, cmd.state);
             });
         },
-        tickInternal: 80,
-        render: function(ms) {
+        // NOTE renderStart doesn't seem to be relative to anything other
+        // than itself. We could use it to determine the time between renders,
+        // but not much else.
+        render: function(renderStart) {
             window.requestAnimationFrame(this.renderCallback);
 
+            var ms = new Date().getTime();
             var tickMs = ms - (ms % this.tickInterval);
 
             controls.update();

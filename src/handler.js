@@ -1,6 +1,7 @@
 (function() {
     'use strict';
 
+    var WebSocket = require('ws');
     var worldState = require('./world_state.js');
     var multiuser = require('./multiuser.js');
 
@@ -54,7 +55,12 @@
         },
         send: function(obj) {
             console.log(obj);
-            this.ws.send(JSON.stringify(obj));
+
+            if (this.ws.readyState === WebSocket.OPEN) {
+                this.ws.send(JSON.stringify(obj));
+            } else {
+                console.log("failed to send message, websocket closed or closing");
+            }
         },
         sendWorldState: function() {
             // TODO the worldstate itself should have a better sense of time

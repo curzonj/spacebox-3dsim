@@ -3,11 +3,15 @@ define([ 'three', '../scene', '../world_state' ], function(THREE, scene, worldSt
     var state = worldState.get();
 
     worldState.registerMutator([ 'x_rotation' ], function(tick, ts, msg) {
-        state.forEach(function(obj) {
-            if (obj.type == "spaceship") {
+        for (var key in state) {
+            var obj = state[key];
+
+            // TODO what do we do if we get a mutation when there is no
+            // object3d to deal with
+            if (obj.type == "spaceship" && obj.object3d) {
                 obj.object3d.rotation.x = msg.values.x_rotation;
             }
-        });
+        }
     });
 
     worldState.registerHandler('spaceship', function(tick, ts, msg) {

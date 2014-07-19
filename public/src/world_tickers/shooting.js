@@ -6,6 +6,9 @@ define([ 'three', '../scene', '../world_state' ], function(THREE, scene, worldSt
 
     // TODO this is pretty hackishs and not extensible
     worldState.registerMutator([ 'shooting' ], function(tick, ts, msg) {
+        // TODO test that shooting == true and add or remove it accordingly
+        console.log("adding a laser");
+
         var state = worldState.get();
 
         var ship1 = state[1];

@@ -64,7 +64,8 @@ define(['three', './scene'], function(THREE, scene) {
                     function(previousValue, currentValue, index, array) {
                         return previousValue &&
                             msg.values[currentValue] !== undefined;
-                    }
+                    },
+                    true
                 );
 
                 if (gonogo) {
