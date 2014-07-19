@@ -54,7 +54,7 @@
             });
         },
         send: function(obj) {
-            console.log(obj);
+            //console.log(obj);
 
             if (this.ws.readyState === WebSocket.OPEN) {
                 this.ws.send(JSON.stringify(obj));

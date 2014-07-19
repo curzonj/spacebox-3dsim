@@ -62,8 +62,7 @@ define(['three', './scene'], function(THREE, scene) {
                 // Test that this change message has all the required fields
                 var gonogo = o.list.reduce(
                     function(previousValue, currentValue, index, array) {
-                        return previousValue &&
-                            msg.values[currentValue] !== undefined;
+                        return previousValue && msg.values.hasOwnProperty(currentValue);
                     },
                     true
                 );

@@ -27,6 +27,13 @@
                 worldState.mutateWorldState(1, ship1.rev, {
                     shooting: 2
                 });
+
+                setTimeout(function() {
+                    worldState.mutateWorldState(1, ship1.rev, {
+                        shooting: -1
+                    });
+
+                }, 1000);
             }, 5000);
         },
         onWorldStateChange: function(ts, key, oldRev, newRev, patch) {
