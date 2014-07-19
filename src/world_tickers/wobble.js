@@ -34,7 +34,7 @@
                     });
 
                 }, 1000);
-            }, 5000);
+            }, 3000);
         },
         onWorldStateChange: function(ts, key, oldRev, newRev, patch) {
             if (oldRev === 0 && patch.type == "spaceship") {
