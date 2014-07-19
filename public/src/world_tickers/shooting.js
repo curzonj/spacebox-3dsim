@@ -15,8 +15,6 @@ define([ 'three', '../scene', '../world_state' ], function(THREE, scene, worldSt
         }
 
         if (msg.values.shooting !== -1) {
-            console.log("adding a laser");
-
             var ship2 = state[msg.values.shooting];
 
             if (!ship2.object3d) {
