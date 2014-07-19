@@ -15,7 +15,14 @@
                 var rot = Math.sin(tickMs / 500);
 
                 worldState.mutateWorldState(i, ship.rev, {
-                    x_rotation: rot
+                    rotation: {
+                        x: rot
+                    },
+                    position: {
+                        x: ship.values.position.x + rot/4,
+                        y: ship.values.position.y,
+                        z: ship.values.position.z,
+                    }
                 });
             });
         },
@@ -28,12 +35,12 @@
                     shooting: 2
                 });
 
-                setTimeout(function() {
+                /*setTimeout(function() {
                     worldState.mutateWorldState(1, ship1.rev, {
                         shooting: -1
                     });
 
-                }, 1000);
+                }, 5000); */
             }, 3000);
         },
         onWorldStateChange: function(ts, key, oldRev, newRev, patch) {

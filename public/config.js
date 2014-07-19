@@ -6,6 +6,9 @@
             threeCore: {
                 exports: 'THREE'
             },
+            tween: {
+                exports: 'TWEEN'
+            },
             VRMLLoader: {
                 deps: ['threeCore']
             },
@@ -31,6 +34,7 @@
                 exports: 'Detector'
             },
             stats: {
+                deps: [ 'threeCore' ],
                 exports: 'Stats'
             }
         },
@@ -50,7 +54,9 @@
             jquery: 'bower_components/jquery/dist/jquery',
             'threex.planets': 'bower_components/threex.planets',
             'threex.spaceships': 'bower_components/threex.spaceships',
-            'threex.laser': 'bower_components/threex.laser'
+            'threex.laser': 'bower_components/threex.laser',
+            'tween': 'bower_components/tween/build/tween.min'
+            //'tween': 'bower_components/tween/src/Tween'
         },
         packages: [
 

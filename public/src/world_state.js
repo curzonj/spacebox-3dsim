@@ -3,9 +3,9 @@ define(['three', './scene'], function(THREE, scene) {
     'use strict';
 
     function WorldState() {
-        this.worldState = {};
         this.handlers = [];
         this.mutators = [];
+        this.tickers = [];
     }
 
     /*
@@ -16,9 +16,16 @@ define(['three', './scene'], function(THREE, scene) {
     values: patch
     */
 
+    // this is a singleton, so this is ok
+    // we want it to be private
+    var worldState = {};
+
     WorldState.prototype = {
-        get: function() {
-            return this.worldState;
+        get: function(key) {
+            return worldState[key.toString()];
+        },
+        registerTicker: function(fn) {
+            this.tickers.push(fn);
         },
         registerHandler: function(type, fn) {
             this.handlers.push({
@@ -33,14 +40,15 @@ define(['three', './scene'], function(THREE, scene) {
             });
         },
         initialState: function(currentTick, timestamp, msg) {
-            this.worldState[msg.key] = {
+            worldState[msg.key] = {
+                key: msg.key,
                 state: msg.values,
                 type: msg.values.type,
                 version: msg.version
             };
         },
         updateState: function(currentTick, timestamp, msg) {
-            var current = this.worldState[msg.key];
+            var current = worldState[msg.key];
 
             if (msg.previous != current.version) {
                 console.log({
@@ -68,36 +76,49 @@ define(['three', './scene'], function(THREE, scene) {
                 );
 
                 if (gonogo) {
-                    try {
+                    //try {
                         o.fn(currentTick, timestamp, msg);
-                    } catch (err) {
+                    /*} catch (err) {
                         console.log(err);
-                    }
+                    } */
                 }
             });
         },
         notifyHandlers: function(currentTick, timestamp, msg) {
             this.handlers.forEach(function(o) {
                 if (o.type == msg.values.type) {
-                    try {
+                    //try {
                         o.fn(currentTick, timestamp, msg);
-                    } catch (err) {
+                    /*} catch (err) {
                         console.log(err);
-                    }
+                    } */
                 }
             });
         },
         onStateChange: function(currentTick, timestamp, msg) {
             // TODO messages that update things can come before the 
             // messages to create those things. deal with it
+            // TODO I think handlers and mutators are going to merge
 
-            if (msg.previous === 0) {
+            if (msg.previous === 0 && worldState[msg.key] === undefined) {
                 this.notifyHandlers(currentTick, timestamp, msg);
                 this.initialState(currentTick, timestamp, msg);
             } else {
                 this.notifyMutators(currentTick, timestamp, msg);
                 this.updateState(currentTick, timestamp, msg);
             }
+        },
+        tickInterval: 80,
+        currentTick: function() {
+            var ms = new Date().getTime();
+            var tickNumber = ms - (ms % this.tickInterval);
+
+            return tickNumber;
+        },
+        worldTick: function(currentTick) {
+            this.tickers.forEach(function(fn) {
+                fn(currentTick);
+            });
         }
     };
 

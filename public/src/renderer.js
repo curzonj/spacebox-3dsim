@@ -5,7 +5,6 @@ define(['three', './container'], function(THREE, container) {
     var renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
 
-    container.innerHTML = "";
     container.appendChild(renderer.domElement);
 
     window.addEventListener('resize', function() {

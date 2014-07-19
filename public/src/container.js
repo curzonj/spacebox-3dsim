@@ -1,3 +1,6 @@
 define( [], function () {
-  return document.getElementById( 'threejs-container' );
+  var obj = document.body; //getElementById( 'threejs-container' );
+  //obj.innerHTML = "";
+
+  return obj;
 } );
