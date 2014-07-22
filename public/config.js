@@ -21,6 +21,9 @@
             'threex.planets/package.require': {
                 deps: ['threeCore']
             },
+            'threex.keyboardstate/package.require': {
+                deps: ['threeCore']
+            },
             'threex.laser/package.require': {
                 deps: ['threeCore']
             },
@@ -40,7 +43,8 @@
         },
         paths: {
             three: 'lib/shims/three',
-            threeCore: 'lib/three.js-r67/build/three.min',
+            keyboard: 'lib/shims/keyboard',
+            threeCore: 'lib/three.js-r67/build/three',
             OrbitControls: 'lib/three.js-r67/examples/js/controls/OrbitControls',
             OBJMTLLoader: 'lib/three.js-r67/examples/js/loaders/OBJMTLLoader',
             MTLLoader: 'lib/three.js-r67/examples/js/loaders/MTLLoader',
@@ -55,6 +59,7 @@
             'threex.planets': 'bower_components/threex.planets',
             'threex.spaceships': 'bower_components/threex.spaceships',
             'threex.laser': 'bower_components/threex.laser',
+            'threex.keyboardstate': 'bower_components/threex.keyboardstate',
             'tween': 'bower_components/tween/build/tween.min'
             //'tween': 'bower_components/tween/src/Tween'
         },

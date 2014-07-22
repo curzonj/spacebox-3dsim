@@ -18,10 +18,16 @@
     WorldState.prototype = {
         constructor: WorldState,
 
-        // handlers call this to download the entire current
-        // world state
-        getWorldState: function() {
+        // TODO this will need an octtree to find objects
+        // in a given volume of space and apply filters
+        // to the results, until then we have getWorldStateHack
+        getWorldStateHack: function() {
             return worldStateStorage;
+        },
+
+
+        get: function(key) {
+            return worldStateStorage[key.toString()];
         },
 
         // handlers call this to send us state changes

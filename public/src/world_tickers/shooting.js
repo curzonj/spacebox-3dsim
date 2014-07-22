@@ -25,6 +25,7 @@ define(['three', '../scene', '../world_state'], function(THREE, scene, worldStat
 
     var lasers = [];
 
+    /*
     // TODO this needs mutators and handlers to be merged. what if
     // we load a ship that is already shooting
     worldState.registerMutator(['shooting'], function(tick, ts, msg) {
@@ -65,5 +66,6 @@ define(['three', '../scene', '../world_state'], function(THREE, scene, worldStat
             }
         });
     });
+    */
 
 });

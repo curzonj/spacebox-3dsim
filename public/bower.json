@@ -12,7 +12,8 @@
     "tween": "https://github.com/sole/tween.js.git",
     "threex.planets": "https://github.com/curzonj/threex.planets.git",
     "threex.spaceships": "https://github.com/curzonj/threex.spaceships.git",
-    "threex.laser": "https://github.com/curzonj/threex.laser.git"
+    "threex.laser": "https://github.com/curzonj/threex.laser.git",
+    "threex.keyboardstate": "https://github.com/jeromeetienne/threex.keyboardstate.git"
   },
   "ignore": [
     "**/.*",

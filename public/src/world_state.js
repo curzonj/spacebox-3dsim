@@ -122,6 +122,9 @@ define(['three', './scene'], function(THREE, scene) {
         }
     };
 
-    return new WorldState();
+    var bob = new WorldState();
+    window.worldState = bob;
+
+    return bob;
 
 });

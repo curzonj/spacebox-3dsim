@@ -10,6 +10,7 @@ define([ 'three', 'tween', '../scene', '../world_state' ], function(THREE, TWEEN
                 obj.object3d.rotationTween.stop();
             }
 
+            // totally broken
             obj.object3d.rotationTween = new TWEEN.Tween(obj.object3d.rotation).
                 to(msg.values.rotation, worldState.tickInterval).
                 start();

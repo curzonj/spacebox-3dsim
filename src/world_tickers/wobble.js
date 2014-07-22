@@ -8,10 +8,9 @@
 
     var obj = {
         worldTick: function(tickMs) {
-            var state = worldState.getWorldState();
-
+            return;
             spaceships.forEach(function(i) {
-                var ship = state[i];
+                var ship = worldState.get(i);
                 var rot = Math.sin(tickMs / 500);
 
                 worldState.mutateWorldState(i, ship.rev, {
@@ -28,8 +27,7 @@
         },
         onClientJoined: function(handler) {
             setTimeout(function() {
-                var state = worldState.getWorldState();
-                var ship1 = state[1];
+                var ship1 = worldState.get(1);
 
                 worldState.mutateWorldState(1, ship1.rev, {
                     shooting: 2

@@ -4,6 +4,7 @@
     var WebSocket = require('ws');
     var worldState = require('./world_state.js');
     var multiuser = require('./multiuser.js');
+    var dispatcher = require('./handlers/dispatcher.js');
 
     var Handler = module.exports = function(ws) {
         this.ws = ws;
@@ -18,17 +19,24 @@
             this.ws.on('message', this.onWSMessageReceived.bind(this));
             this.ws.on('close', this.onConnectionClosed.bind(this));
         },
+        findPilot: function() {
+            // TODO put the spaceship in space, but you have
+            // to get it from the `worldAssets` and then
+            // worldState.mutateWorldState({ });
+            // unless your ship is always in space
+            
+            this.pilot = {
+                myShip: "1"
+            };
+        },
         onConnectionOpen: function() {
+            this.findPilot();
+
             // We listen for updates so that we don't
             // miss any updates while we fetch the
             // full state.
             worldState.addListener(this);
-
             this.sendWorldState();
-
-            // TODO put the spaceship in space, but you have
-            // to get it from the `centeral storage`
-            // worldState.mutateWorldState({ });
 
             multiuser.onClientJoined(this);
         },
@@ -38,13 +46,7 @@
             console.log('disconnected');
         },
         onWSMessageReceived: function(message) {
-            // NOTE this is where we'd handle commands from the client
-            console.log('received: %s', message);
-
-            // NOTE you'll receive this change from the world
-            // state so you don't need to send it directly
-            // to the client
-            // worldState.mutateWorldState(stateChange);
+            dispatcher.dispatch(message, this.pilot);
         },
         sendState: function(ts, obj) {
             this.send({
@@ -65,7 +67,7 @@
         sendWorldState: function() {
             // TODO the worldstate itself should have a better sense of time
             var ts = worldState.currentTick();
-            var state = worldState.getWorldState();
+            var state = worldState.getWorldStateHack();
 
             for (var key in state) {
                 var obj = state[key];
