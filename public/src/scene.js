@@ -4,10 +4,11 @@ define(['three'], function(THREE) {
 
     var scene = new THREE.Scene();
 
-    scene.add(new THREE.GridHelper(1100, 50));
-    scene.add(new THREE.AxisHelper(10));
+    // Grid squares are 10km
+    scene.add(new THREE.GridHelper(4000, 100));
 
-    var starSphere = THREEx.Planets.createStarfield(1000);
+    scene.frustrumDistance = 10000;
+    var starSphere = THREEx.Planets.createStarfield(scene.frustrumDistance);
     scene.add(starSphere);
 
     return scene;

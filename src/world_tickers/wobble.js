@@ -64,9 +64,9 @@
     worldState.mutateWorldState(2, 0, {
         type: 'spaceship',
         position: {
-            x: -2,
-            y: -2,
-            z: -2
+            x: 0,
+            y: 0,
+            z: 0 
         }
     });
 })();

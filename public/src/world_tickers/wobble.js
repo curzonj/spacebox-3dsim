@@ -43,6 +43,8 @@ define([ 'three', 'tween', '../scene', '../world_state' ], function(THREE, TWEEN
             // the version
             var v = msg.values.position;
             object3d.position = new THREE.Vector3(v.x, v.y, v.z);
+            object3d.baseScale = object3d.scale.length();
+            object3d.scale.multiplyScalar(0.25);
             scene.add(object3d);
         });
     });

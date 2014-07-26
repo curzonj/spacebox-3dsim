@@ -4,6 +4,9 @@ define(['./camera', 'three', 'OrbitControls'], function(camera, THREE) {
 
     var controls = new THREE.OrbitControls(camera);
 
+    controls.minDistance = 0.25;
+    controls.maxDistance = camera.maxDistance;
+
     controls.rotateSpeed = 2.0;
     controls.zoomSpeed = 1;
     controls.panSpeed = 3;
