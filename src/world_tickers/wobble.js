@@ -21,7 +21,8 @@
                         } else {
                             worldState.mutateWorldState(target.key, target.rev, {
                                 health: target.values.health - ship.values.damage,
-                                destroyed: true
+                                // TODO make an explosion
+                                tombstone: true
                             });
                             worldState.mutateWorldState(ship.key, ship.rev, {
                                 shooting: -1
@@ -70,6 +71,8 @@
             z: 2
         }
     });
+
+    // TODO add a new ship to the world when the sure logs in
     worldState.mutateWorldState(2, 0, {
         type: 'spaceship',
         maxHealth: 100,

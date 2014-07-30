@@ -15,6 +15,14 @@ define([ 'three', 'tween', '../scene', '../world_state' ], function(THREE, TWEEN
         }
     });
 
+    worldState.registerMutator([ 'tombstone' ], function(key, values) {
+        var obj = worldState.get(key);
+
+        if (obj.object3d) {
+            scene.remove(obj.object3d);
+        }
+    });
+
     worldState.registerMutator([ 'position' ], function(key, values) {
         var obj = worldState.get(key);
 
