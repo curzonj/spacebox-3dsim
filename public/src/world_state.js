@@ -65,46 +65,54 @@ define(['three', './scene'], function(THREE, scene) {
                 current.state[attrname] = msg.values[attrname];
             }
         },
-        notifyMutators: function(currentTick, timestamp, msg) {
+        notifyMutators: function(key, values) {
             this.mutators.forEach(function(o) {
                 // Test that this change message has all the required fields
                 var gonogo = o.list.reduce(
                     function(previousValue, currentValue, index, array) {
-                        return previousValue && msg.values.hasOwnProperty(currentValue);
+                        return previousValue && values.hasOwnProperty(currentValue);
                     },
                     true
                 );
 
                 if (gonogo) {
                     //try {
-                        o.fn(currentTick, timestamp, msg);
+                        o.fn(key, values);
                     /*} catch (err) {
                         console.log(err);
                     } */
                 }
             });
         },
-        notifyHandlers: function(currentTick, timestamp, msg) {
+        notifyHandlers: function(key, values) {
             this.handlers.forEach(function(o) {
-                if (o.type == msg.values.type) {
+                if (o.type == values.type) {
                     //try {
-                        o.fn(currentTick, timestamp, msg);
+                        o.fn(key, values);
                     /*} catch (err) {
                         console.log(err);
                     } */
                 }
             });
+        },
+        asyncMutation: function(key) {
+            var obj = this.get(key);
+
+            this.notifyMutators(key, obj.state);
         },
         onStateChange: function(currentTick, timestamp, msg) {
             // TODO messages that update things can come before the 
             // messages to create those things. deal with it
-            // TODO I think handlers and mutators are going to merge
+            // TODO this method needs to handle all timestamp
+            // and revision issues
 
             if (msg.previous === 0 && worldState[msg.key] === undefined) {
-                this.notifyHandlers(currentTick, timestamp, msg);
                 this.initialState(currentTick, timestamp, msg);
+
+                this.notifyHandlers(msg.key, msg.values);
             } else {
-                this.notifyMutators(currentTick, timestamp, msg);
+                this.notifyMutators(msg.key, msg.values);
+
                 this.updateState(currentTick, timestamp, msg);
             }
         },

@@ -1,10 +1,8 @@
 define([ 'three', 'tween', '../scene', '../world_state' ], function(THREE, TWEEN, scene, worldState) { 
 
-    worldState.registerMutator([ 'rotation' ], function(tick, ts, msg) {
-        var obj = worldState.get(msg.key);
+    worldState.registerMutator([ 'rotation' ], function(key, values) {
+        var obj = worldState.get(key);
 
-        // TODO what do we do if we get a mutation when there is no
-        // object3d to deal with
         if (obj.object3d) {
             if (obj.object3d.rotationTween) {
                 obj.object3d.rotationTween.stop();
@@ -12,39 +10,37 @@ define([ 'three', 'tween', '../scene', '../world_state' ], function(THREE, TWEEN
 
             // totally broken
             obj.object3d.rotationTween = new TWEEN.Tween(obj.object3d.rotation).
-                to(msg.values.rotation, worldState.tickInterval).
+                to(values.rotation, worldState.tickInterval).
                 start();
         }
     });
 
-    worldState.registerMutator([ 'position' ], function(tick, ts, msg) {
-        var obj = worldState.get(msg.key);
+    worldState.registerMutator([ 'position' ], function(key, values) {
+        var obj = worldState.get(key);
 
-        // TODO what do we do if we get a mutation when there is no
-        // object3d to deal with
         if (obj.object3d) {
             if (obj.object3d.positionTween) {
                 obj.object3d.positionTween.stop();
             }
 
             obj.object3d.positionTween = new TWEEN.Tween(obj.object3d.position).
-                to(msg.values.position, worldState.tickInterval).
+                to(values.position, worldState.tickInterval).
                 start();
         }
     });
 
-    worldState.registerHandler('spaceship', function(tick, ts, msg) {
+    worldState.registerHandler('spaceship', function(key, values) {
         THREEx.SpaceShips.loadSpaceFighter01(function(object3d) {
-            var ship = worldState.get(msg.key);
-            object3d.stateKey = msg.key;
+            var ship = worldState.get(key);
+            object3d.stateKey = ship.key;
             ship.object3d = object3d;
 
-            // TODO this may be out of sync because it's async, test
-            // the version
-            var v = msg.values.position;
-            object3d.position = new THREE.Vector3(v.x, v.y, v.z);
+            var v = values.position;
             object3d.baseScale = object3d.scale.length();
             object3d.scale.multiplyScalar(0.25);
+
+            worldState.asyncMutation(ship.key);
+
             scene.add(object3d);
         });
     });

@@ -25,12 +25,10 @@ define(['three', '../scene', '../world_state'], function(THREE, scene, worldStat
 
     var lasers = [];
 
-    /*
-    // TODO this needs mutators and handlers to be merged. what if
-    // we load a ship that is already shooting
-    worldState.registerMutator(['shooting'], function(tick, ts, msg) {
-        if (msg.values.shooting !== -1) {
-            var ship1 = worldState.get(msg.key);
+    worldState.registerMutator(['shooting'], function(key, values) {
+        // The world ticker keeps track of the laser after it's created
+        if (values.shooting !== -1) {
+            var ship1 = worldState.get(key);
 
             if (ship1 && ship1.object3d && ship1.laser === undefined) {
 
@@ -66,6 +64,5 @@ define(['three', '../scene', '../world_state'], function(THREE, scene, worldStat
             }
         });
     });
-    */
 
 });

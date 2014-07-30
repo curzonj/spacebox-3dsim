@@ -30,6 +30,7 @@
             };
         },
         onConnectionOpen: function() {
+            console.log("connected");
             this.findPilot();
 
             // We listen for updates so that we don't

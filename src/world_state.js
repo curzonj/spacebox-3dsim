@@ -34,7 +34,7 @@
         mutateWorldState: function(key, expectedRev, patch) {
             // TODO this needs to sync tick time
             var ts = this.currentTick();
-            var old = worldStateStorage[key] || { rev: 0, values: {} };
+            var old = worldStateStorage[key] || { key: key, rev: 0, values: {} };
 
             if (worldStateStorage[key] === undefined) {
                 worldStateStorage[key] = old;
@@ -55,6 +55,14 @@
             for (var attrname in patch) {
                 old.values[attrname] = patch[attrname];
             }
+
+            console.log({
+                type: "debug_stateChange",
+                ts: ts,
+                version: newRev,
+                key: key,
+                patch: patch
+            });
 
             // broadcast the change to all the listeners
             listeners.forEach(function(h) {
