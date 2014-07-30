@@ -105,6 +105,7 @@ define(['three', './scene'], function(THREE, scene) {
             // messages to create those things. deal with it
             // TODO this method needs to handle all timestamp
             // and revision issues
+            console.log(msg);
 
             if (msg.previous === 0 && worldState[msg.key] === undefined) {
                 this.initialState(currentTick, timestamp, msg);

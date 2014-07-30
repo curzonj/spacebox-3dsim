@@ -12,6 +12,7 @@
     // listeners and storing a compelete snapshot of state
     // for bootstrapping.
     var worldStateStorage = {};
+    var nextID = 1;
 
     function WorldState() {}
 
@@ -27,11 +28,24 @@
 
 
         get: function(key) {
-            return worldStateStorage[key.toString()];
+            if (key !== undefined) {
+                return worldStateStorage[key.toString()];
+            }
+        },
+
+        addObject: function(values) {
+            var id = nextID;
+            nextID += 1;
+
+            this.mutateWorldState(id, 0, values);
+
+            return id;
         },
 
         // handlers call this to send us state changes
         mutateWorldState: function(key, expectedRev, patch) {
+            key = key.toString();
+
             // TODO this needs to sync tick time
             var ts = this.currentTick();
             var old = worldStateStorage[key] || { key: key, rev: 0, values: {} };
@@ -57,8 +71,9 @@
             }
 
             console.log({
-                type: "debug_stateChange",
+                type: "mutateWorldState",
                 ts: ts,
+                oldRev: oldRev,
                 version: newRev,
                 key: key,
                 patch: patch

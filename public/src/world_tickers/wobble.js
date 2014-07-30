@@ -31,9 +31,15 @@ define([ 'three', 'tween', '../scene', '../world_state' ], function(THREE, TWEEN
                 obj.object3d.positionTween.stop();
             }
 
-            obj.object3d.positionTween = new TWEEN.Tween(obj.object3d.position).
-                to(values.position, worldState.tickInterval).
-                start();
+            // TODO don't tween over a certain distance
+            if (obj.object3d.position.length() === 0) {
+                var p = values.position;
+                obj.object3d.position.set(p.x, p.y, p.z);
+            } else {
+                obj.object3d.positionTween = new TWEEN.Tween(obj.object3d.position).
+                    to(values.position, worldState.tickInterval).
+                    start();
+            }
         }
     });
 
