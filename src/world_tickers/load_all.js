@@ -1,7 +1,7 @@
 (function() {
     'use strict';
 
-    require("./wobble.js");
+    require("./npc.js");
 
     module.exports = {};
 })();
