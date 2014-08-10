@@ -46,9 +46,8 @@ define([ 'three', 'tween', '../sceneCtl', '../world_state' ], function(THREE, TW
     worldState.registerHandler('spaceship', function(key, values) {
         THREEx.SpaceShips.loadSpaceFighter01(function(object3d) {
             var ship = worldState.get(key);
-            object3d.stateKey = ship.key;
             ship.object3d = object3d;
-            object3d.name = "spaceship";
+            object3d.name = key; // key is a string
 
             var v = values.position;
             object3d.baseScale = object3d.scale.length();

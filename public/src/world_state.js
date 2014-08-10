@@ -113,9 +113,11 @@ define(function() {
             console.log(msg);
 
             if (msg.previous === 0 && worldState[msg.key] === undefined) {
-                this.initialState(currentTick, timestamp, msg);
+                if (msg.values.tombstone !== true) {
+                    this.initialState(currentTick, timestamp, msg);
 
-                this.notifyHandlers(msg.key, msg.values);
+                    this.notifyHandlers(msg.key, msg.values);
+                }
             } else {
                 this.notifyMutators(msg.key, msg.values);
 
