@@ -1,5 +1,5 @@
-define(['three', 'tween', './stats', './renderer', './camera', './controls', './scene', './world_state', './keypressed', './world_tickers/load_all'],
-       function(THREE, TWEEN, stats, renderer, camera, controls, scene, worldState, keyPressed) {
+define(['three', 'tween', './stats', './renderer', './camera', './controls', './sceneCtl', './world_state', './keypressed', './world_tickers/load_all'],
+       function(THREE, TWEEN, stats, renderer, camera, controls, sceneCtl, worldState, keyPressed) {
 
     'use strict';
 
@@ -26,9 +26,11 @@ define(['three', 'tween', './stats', './renderer', './camera', './controls', './
             var self = this;
             var connection = new WebSocket('ws://localhost:8080/test');
 
-            // When the connection is open, send some data to the server
             connection.onopen = function() {
                 //connection.send('Ping'); // Send the message 'Ping' to the server
+                console.log("reseting the world");
+                sceneCtl.create();
+                worldState.reset();
             };
 
             connection.onclose = function() {
@@ -72,6 +74,15 @@ define(['three', 'tween', './stats', './renderer', './camera', './controls', './
         // but not much else.
         render: function(renderStart) {
             window.requestAnimationFrame(this.renderCallback);
+
+            var scene = sceneCtl.get();
+
+            // We get the render loop started before the scene
+            // is ready. It's not ready until we connect to the
+            // server
+            if (scene === undefined) {
+                return;
+            }
 
             controls.update();
 

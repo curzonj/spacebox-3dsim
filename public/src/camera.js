@@ -1,4 +1,4 @@
-define(['three', './scene'], function(THREE, scene) {
+define(['three', './sceneCtl'], function(THREE, sceneCtl) {
 
     'use strict';
 
@@ -10,7 +10,7 @@ define(['three', './scene'], function(THREE, scene) {
     // each unit == 100 meters
     var maxDistance = 1000;
     var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 
-                                             0.1, scene.frustrumDistance+maxDistance*2);
+                                             0.1, sceneCtl.frustrumDistance+maxDistance*2);
     camera.position.z = 5;
     camera.maxDistance = maxDistance; // just a hint to the controls
 
@@ -19,7 +19,6 @@ define(['three', './scene'], function(THREE, scene) {
         camera.updateProjectionMatrix();
     }, false);
 
-    scene.add(camera);
 
     var dirLight = new THREE.DirectionalLight(0xffffff);
     // TODO implement the sun at the edge of the frustrum
@@ -28,6 +27,9 @@ define(['three', './scene'], function(THREE, scene) {
     camera.add(dirLight);
     camera.add(dirLight.target);
 
-    return camera;
+    sceneCtl.onCreate(function(scene) {
+        scene.add(camera);
+    });
 
+    return camera;
 });

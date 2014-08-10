@@ -1,4 +1,4 @@
-define([ 'three', 'tween', '../scene', '../world_state' ], function(THREE, TWEEN, scene, worldState) { 
+define([ 'three', 'tween', '../sceneCtl', '../world_state' ], function(THREE, TWEEN, sceneCtl, worldState) { 
 
     worldState.registerMutator([ 'rotation' ], function(key, values) {
         var obj = worldState.get(key);
@@ -19,7 +19,7 @@ define([ 'three', 'tween', '../scene', '../world_state' ], function(THREE, TWEEN
         var obj = worldState.get(key);
 
         if (obj.object3d) {
-            scene.remove(obj.object3d);
+            sceneCtl.get().remove(obj.object3d);
         }
     });
 
@@ -48,6 +48,7 @@ define([ 'three', 'tween', '../scene', '../world_state' ], function(THREE, TWEEN
             var ship = worldState.get(key);
             object3d.stateKey = ship.key;
             ship.object3d = object3d;
+            object3d.name = "spaceship";
 
             var v = values.position;
             object3d.baseScale = object3d.scale.length();
@@ -55,7 +56,7 @@ define([ 'three', 'tween', '../scene', '../world_state' ], function(THREE, TWEEN
 
             worldState.asyncMutation(ship.key);
 
-            scene.add(object3d);
+            sceneCtl.get().add(object3d);
         });
     });
 

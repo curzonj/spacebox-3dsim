@@ -1,4 +1,4 @@
-define(['three', './scene'], function(THREE, scene) {
+define(function() {
 
     'use strict';
 
@@ -21,8 +21,13 @@ define(['three', './scene'], function(THREE, scene) {
     var worldState = {};
 
     WorldState.prototype = {
+        reset: function() {
+            worldState = {};
+        },
         get: function(key) {
-            return worldState[key.toString()];
+            if (key !== undefined) {
+                return worldState[key.toString()];
+            }
         },
         registerTicker: function(fn) {
             this.tickers.push(fn);

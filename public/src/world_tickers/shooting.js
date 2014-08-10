@@ -1,4 +1,4 @@
-define(['three', '../scene', '../world_state'], function(THREE, scene, worldState) {
+define(['three', '../sceneCtl', '../world_state'], function(THREE, sceneCtl, worldState) {
 
     Math.radians = function(degrees) {
         return degrees * Math.PI / 180;
@@ -38,7 +38,7 @@ define(['three', '../scene', '../world_state'], function(THREE, scene, worldStat
                 laser.origin = ship1.object3d;
                 new THREEx.LaserCooked(laser);
 
-                scene.add(laser.object3d);
+                sceneCtl.get().add(laser.object3d);
             }
         }
     });
@@ -47,7 +47,10 @@ define(['three', '../scene', '../world_state'], function(THREE, scene, worldStat
         lasers.forEach(function(key) {
             var ship1 = worldState.get(key);
 
-            if (!ship1) {
+            if (!ship1 || ship1.state.shooting === undefined || ship1.laser === undefined) {
+                var index = lasers.indexOf(key);
+                lasers.splice(index, 1);
+
                 return;
             }
 
