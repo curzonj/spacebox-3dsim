@@ -19,13 +19,20 @@
     WorldState.prototype = {
         constructor: WorldState,
 
-        // TODO this will need an octtree to find objects
-        // in a given volume of space and apply filters
-        // to the results, until then we have getWorldStateHack
-        getWorldStateHack: function() {
-            return worldStateStorage;
+        // TODO implement the distance limit
+        scanKeysDistanceFrom: function(coords) {
+            return Object.keys(worldStateStorage);
         },
 
+        scanDistanceFrom: function(coords, type) {
+            var list = this.scanKeysDistanceFrom(coords).map(function(k) {
+                return this.get(k);
+            }, this);
+
+            return list.filter(function(v, i) {
+                return (v !== undefined && v.values.tombstone !== true && (type === undefined || v.values.type === type));
+            });
+        },
 
         get: function(key) {
             if (key !== undefined) {
@@ -81,7 +88,9 @@
 
             // broadcast the change to all the listeners
             listeners.forEach(function(h) {
-                h.onWorldStateChange(ts, key, oldRev, newRev, patch);
+                if (h.onWorldStateChange !== undefined) {
+                    h.onWorldStateChange(ts, key, oldRev, newRev, patch);
+                }
             });
         },
 
@@ -115,7 +124,9 @@
             var tickNumber = this.currentTick();
 
             listeners.forEach(function(h) {
-                h.worldTick(tickNumber);
+                if (h.worldTick !== undefined) {
+                    h.worldTick(tickNumber);
+                }
             });
         }
     };

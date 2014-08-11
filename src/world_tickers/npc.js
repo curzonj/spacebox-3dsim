@@ -4,80 +4,79 @@
     var worldState = require('../world_state.js'),
         multiuser = require('../multiuser.js');
 
-    var spaceships = [];
-
-    function addShip(position) {
-        worldState.addObject({
+    function buildShip(fn) {
+        var obj = {
             type: 'spaceship',
-            maxHealth: 100,
-            health: 100,
+            maxHealth: 30,
+            health: 30,
+            health_pct: 100,
             damage: 1,
-            position: position
-        });
+
+            position: { x: 0, y: 0, z: 0 },
+            velocity: { x: 0, y: 0, z: 0 },
+            facing: { x: 0, y: 0, z: 0 },
+
+            subsystems: ["engines", "weapon"],
+            effects: {},
+            engine: {
+                maxVelocity: 1.0,
+                maxTheta: Math.PI / 60,
+                maxThrust: 0.1,
+                state: "none" // orbit, approach, etc OR manual
+            },
+            weapon: {
+                state: "none"
+            }
+        };
+        fn(obj);
+        worldState.addObject(obj);
     }
 
     var obj = {
-        worldTick: function(tickMs) {
-            spaceships.forEach(function(i) {
-                var ship = worldState.get(i);
-                if (ship.values.shooting !== undefined && ship.values.shooting !== -1) {
-                    var target = worldState.get(ship.values.shooting);
-                    console.log({type: "target_eval", target: target});
-                    if (target !== undefined && !target.values.destroyed) {
-                        if (target.values.health > ship.values.damage) {
-                            worldState.mutateWorldState(target.key, target.rev, {
-                                health: target.values.health - ship.values.damage
-                            });
-                        } else {
-                            worldState.mutateWorldState(target.key, target.rev, {
-                                health: target.values.health - ship.values.damage,
-                                // TODO make an explosion
-                                tombstone: true
-                            });
-                            worldState.mutateWorldState(ship.key, ship.rev, {
-                                shooting: -1
-                            });
-                        }
-                    } else {
-                        worldState.mutateWorldState(ship.key, ship.rev, {
-                            shooting: -1
-                        });
-                    }
-                }
-            });
-        },
         onClientJoined: function(handler) {
-            addShip({ x: 0, y: 0, z: 0 });
+            (function() {
+                var spaceships = worldState.scanDistanceFrom(undefined, "spaceship");
+
+                if (spaceships.length < 2) {
+                    buildShip(function(s) {
+                        s.position = {
+                            x: 5 * Math.random(),
+                            y: -5 * Math.random(),
+                            z: 5 * Math.random()
+                        };
+
+                        s.velocity.z = 0.01;
+                    });
+                }
+            })();
 
             setTimeout(function() {
-                var ship1 = worldState.get(spaceships[0]);
-                var ship2_key = spaceships[spaceships.length - 1];
+                var spaceships = worldState.scanDistanceFrom(undefined, "spaceship");
+                var ship1 = spaceships[0];
+                var ship2 = spaceships[spaceships.length - 1];
 
-                if (ship1 && (ship1.values.shooting === undefined || ship1.values.shooting === -1)) {
+                if (ship1 && ship2) {
+                    // TODO this needs to be a command to a handler that
+                    // turns it into state
                     worldState.mutateWorldState(ship1.key, ship1.rev, {
-                        shooting: ship2_key
+                        weapon: {
+                            state: "shoot",
+                            target: ship2.key
+                        },
+                        engines: {
+                            state: "orbit",
+                            orbitRadius: 3,
+                            orbitTarget: ship2.key
+                        }
                     });
-                } else {
-                    console.log("Can't find a spaceship");
-                    console.log(spaceships);
                 }
             }, 3000);
-        },
-        onWorldStateChange: function(ts, key, oldRev, newRev, patch) {
-            if (oldRev === 0 && patch.type == "spaceship") {
-                spaceships.push(key);
-            } else if (patch.tombstone) {
-                var index = spaceships.indexOf(key);
-
-                if (index !== undefined) {
-                    spaceships.splice(index, 1);
-                }
-            }
         }
     };
 
     multiuser.addListener(obj);
-    worldState.addListener(obj);
 
-    addShip({ x: 2, y: 2, z: 2 });
+    buildShip(function(s) {
+        s.position = { x: 2, y: 2, z: 2 };
+    });
 })();

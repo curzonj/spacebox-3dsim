@@ -4,6 +4,7 @@
   "dependencies": {
     "bower": "latest",
     "ws": "latest",
-    "bower-requirejs": "latest"
+    "bower-requirejs": "latest",
+    "three": "latest"
   }
 }

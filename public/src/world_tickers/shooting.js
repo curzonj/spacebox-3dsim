@@ -47,17 +47,17 @@ define(['three', '../sceneCtl', '../world_state'], function(THREE, sceneCtl, wor
         lasers.forEach(function(key) {
             var ship1 = worldState.get(key);
 
-            if (!ship1 || ship1.state.shooting === undefined || ship1.laser === undefined) {
+            if (!ship1 || ship1.laser === undefined) {
                 var index = lasers.indexOf(key);
                 lasers.splice(index, 1);
 
                 return;
             }
 
-            if (ship1.state.shooting === -1) {
+            if (ship1.values.shooting === -1 || ship1.values.shooting === undefined) {
                 ship1.laser.setTarget(-1);
             } else {
-                var ship2 = worldState.get(ship1.state.shooting);
+                var ship2 = worldState.get(ship1.values.shooting);
 
                 if (ship2.object3d) {
                     ship1.laser.setTarget(ship2.object3d.position);

@@ -24,7 +24,7 @@
             // to get it from the `worldAssets` and then
             // worldState.mutateWorldState({ });
             // unless your ship is always in space
-            
+
             this.pilot = {
                 myShip: "1"
             };
@@ -49,44 +49,62 @@
         onWSMessageReceived: function(message) {
             dispatcher.dispatch(message, this.pilot);
         },
-        sendState: function(ts, obj) {
+        sendState: function(ts, key, oldRev, newRev, values) {
+            var safeValues = this.sanitizeState(values);
+
+            // Currently we have to send the messages even if
+            // nothing public was changed or the revisions
+            // get messed up
+
             this.send({
                 type: "state",
                 timestamp: ts,
-                state: obj
+                state: {
+                    key: key,
+                    previous: oldRev,
+                    version: newRev,
+                    values: safeValues
+                }
             });
         },
         send: function(obj) {
-            //console.log(obj);
-
             if (this.ws.readyState === WebSocket.OPEN) {
                 this.ws.send(JSON.stringify(obj));
             } else {
                 console.log("failed to send message, websocket closed or closing");
             }
         },
+        sanitizeState: function(values) {
+            // TODO allow the client access to it's own subsystems
+            var safeAttrs = ['type', 'position', 'velocity', 'facing', 'tombstone', 'health_pct'];
+            var safeValues = {};
+
+            safeAttrs.forEach(function(name) {
+                if (values.hasOwnProperty(name)) {
+                    safeValues[name] = values[name];
+                }
+            }, this);
+
+            // We map effects into the root namespace for simplicity
+            // on the clientside
+            if (values.hasOwnProperty("effects")) {
+                Object.keys(values.effects).forEach(function(n) {
+                    safeValues[n] = values.effects[n];
+                });
+            }
+
+            return safeValues;
+        },
         sendWorldState: function() {
             // TODO the worldstate itself should have a better sense of time
             var ts = worldState.currentTick();
-            var state = worldState.getWorldStateHack();
 
-            for (var key in state) {
-                var obj = state[key];
-                this.sendState(ts, {
-                    key: key,
-                    previous: 0,
-                    version: obj.rev,
-                    values: obj.values
-                });
-            }
+            worldState.scanDistanceFrom(undefined).forEach(function(obj) {
+                this.sendState(ts, obj.key, 0, obj.rev, obj.values);
+            }, this);
         },
         onWorldStateChange: function(ts, key, oldRev, newRev, patch) {
-            this.sendState(ts, {
-                key: key,
-                previous: oldRev,
-                version: newRev,
-                values: patch
-            });
+            this.sendState(ts, key, oldRev, newRev, patch);
         },
 
         // this is called on every tick

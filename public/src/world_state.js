@@ -47,7 +47,7 @@ define(function() {
         initialState: function(currentTick, timestamp, msg) {
             worldState[msg.key] = {
                 key: msg.key,
-                state: msg.values,
+                values: msg.values,
                 type: msg.values.type,
                 version: msg.version
             };
@@ -67,7 +67,7 @@ define(function() {
             current.version = msg.version;
 
             for (var attrname in msg.values) {
-                current.state[attrname] = msg.values[attrname];
+                current.values[attrname] = msg.values[attrname];
             }
         },
         notifyMutators: function(key, values) {
@@ -103,7 +103,7 @@ define(function() {
         asyncMutation: function(key) {
             var obj = this.get(key);
 
-            this.notifyMutators(key, obj.state);
+            this.notifyMutators(key, obj.values);
         },
         onStateChange: function(currentTick, timestamp, msg) {
             // TODO messages that update things can come before the 
