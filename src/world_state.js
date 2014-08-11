@@ -73,18 +73,19 @@
                 });
             }
 
-            for (var attrname in patch) {
-                old.values[attrname] = patch[attrname];
+            function deepMerge(src, tgt) {
+                for (var attrname in src) {
+                    var v = src[attrname];
+                    if (typeof v == "object" && tgt.hasOwnProperty(attrname)) {
+                        deepMerge(v, tgt[attrname]);
+                    } else {
+                        tgt[attrname] = v;
+                    }
+                }
+            
             }
 
-            console.log({
-                type: "mutateWorldState",
-                ts: ts,
-                oldRev: oldRev,
-                version: newRev,
-                key: key,
-                patch: patch
-            });
+            deepMerge(patch, old.values);
 
             // broadcast the change to all the listeners
             listeners.forEach(function(h) {

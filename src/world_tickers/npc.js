@@ -14,7 +14,7 @@
 
             position: { x: 0, y: 0, z: 0 },
             velocity: { x: 0, y: 0, z: 0 },
-            facing: { x: 0, y: 0, z: 0 },
+            facing: { x: 0, y: 0, z: 0, w: 1 },
 
             subsystems: ["engines", "weapon"],
             effects: {},
@@ -29,16 +29,19 @@
             }
         };
         fn(obj);
-        worldState.addObject(obj);
+
+        return worldState.addObject(obj);
     }
 
     var obj = {
         onClientJoined: function(handler) {
-            (function() {
+            function bob() {
                 var spaceships = worldState.scanDistanceFrom(undefined, "spaceship");
 
                 if (spaceships.length < 2) {
-                    buildShip(function(s) {
+                    var ship1 = spaceships[0];
+
+                    var ship2_key = buildShip(function(s) {
                         s.position = {
                             x: 5 * Math.random(),
                             y: -5 * Math.random(),
@@ -47,30 +50,30 @@
 
                         s.velocity.z = 0.01;
                     });
-                }
-            })();
 
-            setTimeout(function() {
-                var spaceships = worldState.scanDistanceFrom(undefined, "spaceship");
-                var ship1 = spaceships[0];
-                var ship2 = spaceships[spaceships.length - 1];
-
-                if (ship1 && ship2) {
-                    // TODO this needs to be a command to a handler that
-                    // turns it into state
                     worldState.mutateWorldState(ship1.key, ship1.rev, {
-                        weapon: {
-                            state: "shoot",
-                            target: ship2.key
-                        },
-                        engines: {
+                        engine: {
                             state: "orbit",
-                            orbitRadius: 3,
-                            orbitTarget: ship2.key
+                            orbitRadius: 1,
+                            orbitTarget: ship2_key
                         }
                     });
+
+                    setTimeout(function() {
+                        ship1 = worldState.get(ship1.key);
+                        worldState.mutateWorldState(ship1.key, ship1.rev, {
+                            weapon: {
+                                state: "shoot",
+                                target: ship2_key
+                            }
+                        });
+                    }, 3000);
                 }
-            }, 3000);
+
+                setTimeout(bob, 2000);
+            }
+
+            bob();
         }
     };
 

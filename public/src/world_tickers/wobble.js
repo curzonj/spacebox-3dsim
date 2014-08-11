@@ -23,6 +23,15 @@ define([ 'three', 'tween', '../sceneCtl', '../world_state' ], function(THREE, TW
         }
     });
 
+    worldState.registerMutator([ 'facing' ], function(key, values) {
+        var obj = worldState.get(key);
+
+        if (obj.object3d) {
+            var p = values.facing;
+            obj.object3d.quaternion.set(p.x, p.y, p.z, p.w);
+        }
+    });
+
     worldState.registerMutator([ 'position' ], function(key, values) {
         var obj = worldState.get(key);
 

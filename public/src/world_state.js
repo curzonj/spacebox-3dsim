@@ -55,6 +55,15 @@ define(function() {
         updateState: function(currentTick, timestamp, msg) {
             var current = worldState[msg.key];
 
+            if (current === undefined) {
+                console.log({
+                    type: "missingState",
+                    msg: msg
+                });
+
+                throw "missingState";
+            }
+
             if (msg.previous != current.version) {
                 console.log({
                     type: "revisionError",
@@ -110,8 +119,6 @@ define(function() {
             // messages to create those things. deal with it
             // TODO this method needs to handle all timestamp
             // and revision issues
-            console.log(msg);
-
             if (msg.previous === 0 && worldState[msg.key] === undefined) {
                 if (msg.values.tombstone !== true) {
                     this.initialState(currentTick, timestamp, msg);
