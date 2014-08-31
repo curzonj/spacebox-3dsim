@@ -25,6 +25,7 @@ define([ 'three', 'tween', '../sceneCtl', '../world_state' ], function(THREE, TW
 
     worldState.registerMutator([ 'facing' ], function(key, values) {
         var obj = worldState.get(key);
+        console.log(values);
 
         if (obj.object3d) {
             var p = values.facing;

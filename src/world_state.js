@@ -50,8 +50,12 @@
         },
 
         // handlers call this to send us state changes
-        mutateWorldState: function(key, expectedRev, patch) {
+        mutateWorldState: function(key, expectedRev, patch, debug) {
             key = key.toString();
+
+            if (debug === true) {
+                console.log(patch);
+            }
 
             // TODO this needs to sync tick time
             var ts = this.currentTick();
@@ -76,7 +80,10 @@
             function deepMerge(src, tgt) {
                 for (var attrname in src) {
                     var v = src[attrname];
-                    if (typeof v == "object" && tgt.hasOwnProperty(attrname)) {
+                    if (typeof v == "object" &&
+                        tgt.hasOwnProperty(attrname) &&
+                            (typeof (tgt[attrname])) == "object") {
+
                         deepMerge(v, tgt[attrname]);
                     } else {
                         tgt[attrname] = v;

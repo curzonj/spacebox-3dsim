@@ -10,7 +10,7 @@
         if (o && o.hasOwnProperty('x') && o.hasOwnProperty('y') && o.hasOwnProperty('z')) {
             v.set(o.x, o.y, o.z);
         } else {
-            v.set(0,0,0);
+            v.set(0, 0, 0);
         }
     }
 
@@ -18,7 +18,7 @@
         if (o && o.hasOwnProperty('x') && o.hasOwnProperty('y') && o.hasOwnProperty('z') && o.hasOwnProperty('w')) {
             q.set(o.x, o.y, o.z, o.w);
         } else {
-            q.set(0,0,0,0);
+            q.set(0, 0, 0, 0);
         }
     }
 
@@ -34,11 +34,19 @@
         return direction.set(0, 0, 1).applyQuaternion(orientationQ).normalize();
     }
 
-    var obj = {
+    function validAcceleration(ship, desired) {
+        return Math.min(desired, ship.values.engine.maxThrust);
+    }
+
+    var funcs = {
         handle_fullStop: function() {
+            var currentDirection = new THREE.Vector3(),
+                orientationQ = new THREE.Quaternion();
 
             return function(ship) {
-            
+                buildQuaternion(orientationQ, ship.values.facing);
+                buildCurrentDirection(currentDirection, orientationQ);
+
             };
         }(),
         handle_orbit: function() {
@@ -47,11 +55,13 @@
                 radius = new THREE.Vector3(),
                 velocityV = new THREE.Vector3(),
                 position = new THREE.Vector3(),
-                target = new THREE.Vector3();
+                target = new THREE.Vector3(),
+                currentDirection = new THREE.Vector3(),
+                orientationQ = new THREE.Quaternion();
 
             return function(ship) {
                 var orbitTarget = worldState.get(ship.values.engine.orbitTarget);
-                if (orbitTarget.values.tombstone === true) {
+                if (orbitTarget === undefined || orbitTarget.values.tombstone === true) {
                     // TODO come to a full stop
                     worldState.mutateWorldState(ship.key, ship.rev, {
                         engine: {
@@ -87,7 +97,20 @@
                 // right angles
                 var theta2Limit = (Math.PI * 53 / 110);
 
-                if (isNaN(theta2) || theta2 > theta2Limit) {
+                if (velocityV.length() === 0) {
+                    buildQuaternion(orientationQ, ship.values.facing);
+                    buildCurrentDirection(currentDirection, orientationQ);
+
+                    // We're not currently moving, but we are facing within
+                    // 90deg of the target, lets get some velocity and then
+                    // we'll correct
+                    var theta = fromTarget.angleTo(currentDirection);
+                    console.log(theta);
+                    if (Math.PI / 2 < theta) {
+                        accel = 1000;
+                    }
+                } else if (isNaN(theta2) || theta2 > theta2Limit) {
+                    console.log("orbit approximation");
                     var v2 = new THREE.Vector3().subVectors(radius, fromTarget);
 
                     var thetaA = fromTarget.angleTo(v2) - v2.angleTo(velocityV);
@@ -95,6 +118,7 @@
 
                     accel = (velocityV.length() * Math.sin(thetaB)) / Math.sin(thetaA);
                 } else {
+                    console.log("long distance approach");
                     var thetaC = Math.PI / 2 - theta2;
                     var vNot = d * Math.sin(thetaC) / sin90;
                     if (vNot < maxVelocity) {
@@ -115,12 +139,16 @@
                     }
                 }
 
+                // This just keeps our state clean even though
+                // the ship can't actually go faster than maxThrust
+                accel = validAcceleration(ship, accel);
+
                 worldState.mutateWorldState(ship.key, ship.rev, {
                     engine: {
                         lookAt: explodeVector(target),
                         acceleration: accel
                     }
-                });
+                }, true);
             };
         }(),
         handle_lookAt: function() {
@@ -159,7 +187,7 @@
                         theta: theta,
                         thetaAxis: explodeVector(rotationCrossVector)
                     }
-                });
+                }, true);
             };
         }(),
         handle_rotation: function() {
@@ -184,7 +212,7 @@
                 orientationM.makeRotationFromQuaternion(orientationQ);
 
                 matrix.makeRotationAxis(thetaAxis, theta).
-                    multiply(orientationM);
+                multiply(orientationM);
 
                 orientationQ.setFromRotationMatrix(matrix);
 
@@ -196,7 +224,7 @@
                         z: q.z,
                         w: q.w,
                     }
-                });
+                }, true);
             };
         }(),
         handle_acceleration: function() {
@@ -258,9 +286,18 @@
             };
         }(),
         worldTick: function(tickMs) {
+            function process(cmd, ship) {
+                funcs["handle_" + cmd]();
+
+                return worldState.get(ship.key);
+            }
+
             worldState.scanDistanceFrom(undefined, "spaceship").forEach(function(ship) {
-                if (ship.values.engine.state !== "none") {
-                    var fn = this["handle_" + ship.values.engine.state];
+                var cmds = ["lookAt", "rotation", "acceleration", "velocity"];
+                var engine_state = ship.values.engine.state;
+
+                if (engine_state !== "none") {
+                    var fn = funcs["handle_" + engine_state];
 
                     if (fn === undefined) {
                         worldState.mutateWorldState(ship.key, ship.rev, {
@@ -269,21 +306,20 @@
                             }
                         });
                     } else {
-                        fn(ship, tickMs);
+                        cmds.unshift(engine_state);
                     }
                 }
 
-                // Why is rotation and accel part of state?
-                // because the client sends the state of engines
-                // and thrusters on/off
-                this.handle_lookAt(ship);
-                this.handle_rotation(ship);
-                this.handle_acceleration(ship);
-
-                this.handle_velocity(ship);
+                // TODO there should be some better way to accumulate the
+                // changes and then send them as a batch to world state
+                // instead of using mutateWorldState in each command
+                cmds.forEach(function(cmd) {
+                    funcs["handle_" + cmd](ship);
+                    ship = worldState.get(ship.key);
+                });
             }, this);
         }
     };
 
-    worldState.addListener(obj);
+    worldState.addListener(funcs);
 })();
