@@ -19,9 +19,9 @@
             subsystems: ["engines", "weapon"],
             effects: {},
             engine: {
-                maxVelocity: 1.0,
-                maxTheta: Math.PI / 60,
-                maxThrust: 0.1,
+                maxVelocity: 0.5,
+                maxTheta: Math.PI / 40,
+                maxThrust: 0.05,
                 state: "none" // orbit, approach, etc OR manual
             },
             weapon: {
@@ -43,9 +43,9 @@
 
                     var ship2_key = buildShip(function(s) {
                         s.position = {
-                            x: 5 * Math.random(),
-                            y: -5 * Math.random(),
-                            z: 5 * Math.random()
+                            x: Math.random(),
+                            y: -1 * Math.random(),
+                            z: Math.random()
                         };
 
                         s.velocity.z = 0.01;
@@ -70,7 +70,7 @@
                     }, 3000);
                 }
 
-                setTimeout(bob, 2000);
+                setTimeout(bob, 5000);
             }
 
             bob();

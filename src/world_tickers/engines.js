@@ -35,18 +35,66 @@
     }
 
     function validAcceleration(ship, desired) {
-        return Math.min(desired, ship.values.engine.maxThrust);
+        var max = ship.values.engine.maxThrust;
+
+        if (desired === undefined || isNaN(desired)) {
+            desired = max;
+        }
+
+        return Math.min(desired, max);
     }
 
     var funcs = {
         handle_fullStop: function() {
-            var currentDirection = new THREE.Vector3(),
+            var velocityV = new THREE.Vector3(),
+                position = new THREE.Vector3(),
+                behind = new THREE.Vector3(),
+                currentDirection = new THREE.Vector3(),
                 orientationQ = new THREE.Quaternion();
 
             return function(ship) {
-                buildQuaternion(orientationQ, ship.values.facing);
-                buildCurrentDirection(currentDirection, orientationQ);
+                buildVector(velocityV, ship.values.velocity);
+                buildVector(position, ship.values.position);
 
+                if (velocityV.length() > 0) {
+                    // reverse is the same object as velocityV but
+                    // we don't share it so we can use it for this
+                    // purpose. Giving it a new name just makes the
+                    // other code more understandable
+                    var reverse =  velocityV.negate();
+
+                    behind.addVectors(reverse, position);
+                    buildQuaternion(orientationQ, ship.values.facing);
+                    buildCurrentDirection(currentDirection, orientationQ);
+
+                    // TODO replace with `move to point` logic
+                    var theta = currentDirection.angleTo(reverse);
+                    if (theta > CONST_fpErrorMargin) {
+                        worldState.mutateWorldState(ship.key, ship.rev, {
+                            engine: {
+                                lookAt: explodeVector(behind),
+                                acceleration: 0
+                            }
+                        });
+                    } else {
+                        var velocity = velocityV.length();
+
+                        worldState.mutateWorldState(ship.key, ship.rev, {
+                            engine: {
+                                // thrust by the lesser of current speed or
+                                // max thrust
+                                acceleration: validAcceleration(ship, velocity)
+                            }
+                        });
+                    }
+
+                } else {
+                    worldState.mutateWorldState(ship.key, ship.rev, {
+                        engine: {
+                            acceleration: 0
+                        }
+                    });
+                }
             };
         }(),
         handle_orbit: function() {
@@ -62,10 +110,9 @@
             return function(ship) {
                 var orbitTarget = worldState.get(ship.values.engine.orbitTarget);
                 if (orbitTarget === undefined || orbitTarget.values.tombstone === true) {
-                    // TODO come to a full stop
                     worldState.mutateWorldState(ship.key, ship.rev, {
                         engine: {
-                            state: "none",
+                            state: "fullStop",
                             lookAt: false,
                             theta: 0,
                             acceleration: 0
@@ -105,12 +152,10 @@
                     // 90deg of the target, lets get some velocity and then
                     // we'll correct
                     var theta = fromTarget.angleTo(currentDirection);
-                    console.log(theta);
                     if (Math.PI / 2 < theta) {
                         accel = 1000;
                     }
                 } else if (isNaN(theta2) || theta2 > theta2Limit) {
-                    console.log("orbit approximation");
                     var v2 = new THREE.Vector3().subVectors(radius, fromTarget);
 
                     var thetaA = fromTarget.angleTo(v2) - v2.angleTo(velocityV);
@@ -118,7 +163,6 @@
 
                     accel = (velocityV.length() * Math.sin(thetaB)) / Math.sin(thetaA);
                 } else {
-                    console.log("long distance approach");
                     var thetaC = Math.PI / 2 - theta2;
                     var vNot = d * Math.sin(thetaC) / sin90;
                     if (vNot < maxVelocity) {
@@ -148,7 +192,7 @@
                         lookAt: explodeVector(target),
                         acceleration: accel
                     }
-                }, true);
+                });
             };
         }(),
         handle_lookAt: function() {
@@ -187,7 +231,7 @@
                         theta: theta,
                         thetaAxis: explodeVector(rotationCrossVector)
                     }
-                }, true);
+                });
             };
         }(),
         handle_rotation: function() {
@@ -224,7 +268,7 @@
                         z: q.z,
                         w: q.w,
                     }
-                }, true);
+                });
             };
         }(),
         handle_acceleration: function() {
