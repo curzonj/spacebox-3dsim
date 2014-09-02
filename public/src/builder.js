@@ -34,17 +34,23 @@ define(['three', 'tween', './stats', './renderer', './camera', './controls', './
             };
 
             connection.onclose = function() {
-                console.log("waiting 1sec to reconnect");
+                if (!self.paused) {
+                    console.log("waiting 1sec to reconnect");
+                }
                 setTimeout(function() {
-                    console.log("reconnecting");
+                    if (!self.paused) {
+                        console.log("reconnecting");
+                    }
                     self.openConnection();
                 }, 1000);
             };
 
             // Log errors
             connection.onerror = function(error) {
-                console.log('WebSocket Error');
-                console.log(error);
+                if (!self.paused) {
+                    console.log('WebSocket Error');
+                    console.log(error);
+                }
             };
 
             connection.onmessage = this.onMessage.bind(this);
@@ -64,6 +70,7 @@ define(['three', 'tween', './stats', './renderer', './camera', './controls', './
             this.pendingCommands = [];
 
             list.forEach(function(cmd) {
+                console.log(cmd.state);
                 worldState.onStateChange(tickMs, cmd.timestamp, cmd.state);
             });
 

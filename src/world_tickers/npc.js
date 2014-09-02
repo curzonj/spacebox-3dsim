@@ -19,9 +19,9 @@
             subsystems: ["engines", "weapon"],
             effects: {},
             engine: {
-                maxVelocity: 0.5,
-                maxTheta: Math.PI / 40,
-                maxThrust: 0.05,
+                maxVelocity: 1.0,
+                maxTheta: Math.PI / 30,
+                maxThrust: 0.1,
                 state: "none" // orbit, approach, etc OR manual
             },
             weapon: {

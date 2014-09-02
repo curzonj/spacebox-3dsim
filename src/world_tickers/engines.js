@@ -247,6 +247,7 @@
                 theta = Math.min(theta, maxTheta);
 
                 buildVector(thetaAxis, ship.values.engine.thetaAxis);
+                thetaAxis.normalize();
 
                 if (theta <= 0 || thetaAxis.length() === 0) {
                     return;
@@ -258,7 +259,9 @@
                 matrix.makeRotationAxis(thetaAxis, theta).
                 multiply(orientationM);
 
-                orientationQ.setFromRotationMatrix(matrix);
+                // The math accumulates error, so we have
+                // to normalize it or it distortes the models
+                orientationQ.setFromRotationMatrix(matrix).normalize();
 
                 var q = orientationQ;
                 worldState.mutateWorldState(ship.key, ship.rev, {
