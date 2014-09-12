@@ -20,7 +20,7 @@
             effects: {},
             engine: {
                 maxVelocity: 1.0,
-                maxTheta: Math.PI / 30,
+                maxTheta: Math.PI / 10,
                 maxThrust: 0.1,
                 state: "none" // orbit, approach, etc OR manual
             },

@@ -1,10 +1,19 @@
 (function() {
     'use strict';
 
-    var WebSocketServer = require('ws').Server,
-        wss = new WebSocketServer({
-            port: 8080
-        });
+    var WebSockets = require("ws");
+    var http = require("http");
+    var express = require("express");
+    var app = express();
+    var port = process.env.PORT || 5000;
+
+    app.use(express.static(__dirname + "/../public"));
+
+    var server = http.createServer(app);
+    server.listen(port);
+
+    var WebSocketServer = WebSockets.Server,
+        wss = new WebSocketServer({server: server});
 
     require("./world_tickers/load_all.js");
 

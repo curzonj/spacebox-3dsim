@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "dependencies": {
     "bower": "latest",
+    "express": "latest",
     "ws": "latest",
     "bower-requirejs": "latest",
     "three": "latest"
