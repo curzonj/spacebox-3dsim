@@ -1,6 +1,8 @@
 (function() {
     'use strict';
 
+    var uuidGen = require('node-uuid');
+
     // WorldState is a private function so it's safe
     // to declare these here.
     var listeners = [];
@@ -12,7 +14,6 @@
     // listeners and storing a compelete snapshot of state
     // for bootstrapping.
     var worldStateStorage = {};
-    var nextID = 1;
 
     function WorldState() {}
 
@@ -41,8 +42,7 @@
         },
 
         addObject: function(values) {
-            var id = nextID;
-            nextID += 1;
+            var id = uuidGen.v1();
 
             this.mutateWorldState(id, 0, values);
 
@@ -59,22 +59,31 @@
 
             // TODO this needs to sync tick time
             var ts = this.currentTick();
-            var old = worldStateStorage[key] || { key: key, rev: 0, values: {} };
-
-            if (worldStateStorage[key] === undefined) {
-                worldStateStorage[key] = old;
-            }
+            var old = worldStateStorage[key] || {
+                key: key,
+                rev: 0,
+                values: {}
+            };
 
             var oldRev = old.rev;
             var newRev = old.rev = oldRev + 1;
 
             if (oldRev !== expectedRev) {
-                console.log({
+                var data = {
                     type: "revisionError",
                     expected: expectedRev,
                     found: oldRev,
                     key: key
-                });
+                };
+
+                console.log(data);
+                var e = new Error("revisionError expected="+expectedRev+" found="+oldRev);
+                e.data = data;
+                throw e;
+            }
+
+            if (worldStateStorage[key] === undefined) {
+                worldStateStorage[key] = old;
             }
 
             function deepMerge(src, tgt) {
@@ -82,14 +91,14 @@
                     var v = src[attrname];
                     if (typeof v == "object" &&
                         tgt.hasOwnProperty(attrname) &&
-                            (typeof (tgt[attrname])) == "object") {
+                        (typeof(tgt[attrname])) == "object") {
 
                         deepMerge(v, tgt[attrname]);
                     } else {
                         tgt[attrname] = v;
                     }
                 }
-            
+
             }
 
             deepMerge(patch, old.values);
