@@ -21,7 +21,9 @@ var server = http.createServer(app);
 server.listen(port);
 
 var WebSocketServer = WebSockets.Server,
-    wss = new WebSocketServer({server: server});
+    wss = new WebSocketServer({
+        server: server
+    });
 
 require("./world_tickers/load_all.js");
 
@@ -31,12 +33,18 @@ worldState.runWorldTicker();
 // TODO this doesn't even belong in this app
 var debug = require('debug')('spodb');
 app.get('/spodb', function(req, res) {
-    res.send(worldState.scanDistanceFrom());
+    var hash = {},
+        list = worldState.scanDistanceFrom();
+    list.forEach(function(item) {
+        hash[item.key] = item;
+    });
+
+    res.send(hash);
 });
 
 app.post('/spodb', function(req, res) {
-    worldState.addObject(req.body);
-    res.sendStatus(201);
+    var key = worldState.addObject(req.body);
+    res.send(key);
 });
 
 app.post('/spodb/:uuid', function(req, res) {

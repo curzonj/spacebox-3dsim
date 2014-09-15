@@ -5,6 +5,7 @@
         multiuser = require('../multiuser.js');
 
     function buildShip(fn) {
+        // TODO load this from tech
         var obj = {
             type: 'spaceship',
             maxHealth: 30,
@@ -16,7 +17,7 @@
             velocity: { x: 0, y: 0, z: 0 },
             facing: { x: 0, y: 0, z: 0, w: 1 },
 
-            subsystems: ["engines", "weapon"],
+            subsystems: ["engine", "weapon"],
             effects: {},
             engine: {
                 maxVelocity: 1.0,
