@@ -81,6 +81,7 @@
     multiuser.addListener(obj);
 
     buildShip(function(s) {
+        s.effects.team = 1;
         s.position = { x: 2, y: 2, z: 2 };
     });
 })();

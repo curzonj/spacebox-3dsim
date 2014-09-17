@@ -1,7 +1,27 @@
-define(['three', 'tween', './stats', './renderer', './camera', './controls', './sceneCtl', './world_state', './keypressed', './world_tickers/load_all'],
-    function(THREE, TWEEN, stats, renderer, camera, controls, sceneCtl, worldState, keyPressed) {
+define(['jquery', 'three', 'tween', './container', './stats', './renderer', './camera', './controls', './sceneCtl', './world_state', './keypressed', './world_tickers/load_all'],
+    function($, THREE, TWEEN, container, stats, renderer, camera, controls, sceneCtl, worldState, keyPressed) {
 
         'use strict';
+
+        var projector = new THREE.Projector();
+
+        function placeCircle(object3d) {
+            var elem = $('#tracking-overlay');
+
+            var v = projector.projectVector( object3d.position.clone(), camera );
+            console.log(v);
+            var percX = (v.x + 1) / 2;
+            var percY = (-v.y + 1) / 2;
+            console.log("percX", percX, "precY", percY);
+            console.log("width", renderer.domElement.offsetWidth, "precY", renderer.domElement.offsetHeight);
+            var left = percX * renderer.domElement.offsetWidth;
+            var top = percY * renderer.domElement.offsetHeight;
+            console.log(left, top);
+
+            elem
+                .css('left', (left - elem.width() / 2) + 'px')
+                .css('top', (top - elem.height() / 2) + 'px');
+        }
 
         function Builder() {
             this.pendingCommands = [];
@@ -14,6 +34,21 @@ define(['three', 'tween', './stats', './renderer', './camera', './controls', './
             constructor: Builder,
             start: function() {
                 this.openConnection();
+
+                var self = this;
+                worldState.registerMutator(['team'], function(key, values) {
+                    var obj = worldState.get(key);
+                    self.targetShip = obj.object3d;
+                    console.log(key);
+
+                    if (self.targetShip && self.overlay === undefined) {
+                        var elem = document.createElement("div");
+                        elem.setAttribute("id", "tracking-overlay");
+                        container.appendChild(elem);
+
+                        self.overlay = $(elem);
+                    }
+                });
 
                 this.render(0);
 
@@ -82,7 +117,7 @@ define(['three', 'tween', './stats', './renderer', './camera', './controls', './
                 this.pendingCommands = [];
 
                 list.forEach(function(cmd) {
-                    console.log(cmd.state);
+                    //console.log(cmd.state);
                     worldState.onStateChange(tickMs, cmd.timestamp, cmd.state);
                 });
 
@@ -111,6 +146,10 @@ define(['three', 'tween', './stats', './renderer', './camera', './controls', './
                 }
 
                 renderer.render(scene, camera);
+
+                if (!this.paused && this.targetShip) {
+                    placeCircle(this.targetShip);
+                }
 
                 stats.update();
             }
