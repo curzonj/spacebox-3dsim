@@ -4,10 +4,11 @@
     var worldState = require('../world_state.js'),
         multiuser = require('../multiuser.js');
 
-    function buildShip(fn) {
+    function buildShip(account, fn) {
         // TODO load this from tech
         var obj = {
             type: 'spaceship',
+            account: account,
             maxHealth: 30,
             health: 30,
             health_pct: 100,
@@ -34,54 +35,49 @@
         return worldState.addObject(obj);
     }
 
-    var obj = {
-        onClientJoined: function(handler) {
-            function bob() {
-                var spaceships = worldState.scanDistanceFrom(undefined, "spaceship");
+    function tellShipOneToKillShip2() {
+        // TODO ship1 should specifically kill team 2 ships
+        var spaceships = worldState.scanDistanceFrom(undefined, "spaceship");
 
-                if (spaceships.length < 2) {
-                    var ship1 = spaceships[0];
+        if (spaceships.length < 2) {
+            var ship1 = spaceships[0];
 
-                    var ship2_key = buildShip(function(s) {
-                        s.position = {
-                            x: Math.random(),
-                            y: -1 * Math.random(),
-                            z: Math.random()
-                        };
+            var ship2_key = buildShip(2, function(s) {
+                s.position = {
+                    x: Math.random(),
+                    y: -1 * Math.random(),
+                    z: Math.random()
+                };
 
-                        s.velocity.z = 0.01;
-                    });
+                s.velocity.z = 0.01;
+            });
 
-                    worldState.mutateWorldState(ship1.key, ship1.rev, {
-                        engine: {
-                            state: "orbit",
-                            orbitRadius: 1,
-                            orbitTarget: ship2_key
-                        }
-                    });
-
-                    setTimeout(function() {
-                        ship1 = worldState.get(ship1.key);
-                        worldState.mutateWorldState(ship1.key, ship1.rev, {
-                            weapon: {
-                                state: "shoot",
-                                target: ship2_key
-                            }
-                        });
-                    }, 3000);
+            worldState.mutateWorldState(ship1.key, ship1.rev, {
+                engine: {
+                    state: "orbit",
+                    orbitRadius: 1,
+                    orbitTarget: ship2_key
                 }
+            });
 
-                setTimeout(bob, 5000);
-            }
-
-            bob();
+            setTimeout(function() {
+                ship1 = worldState.get(ship1.key);
+                worldState.mutateWorldState(ship1.key, ship1.rev, {
+                    weapon: {
+                        state: "shoot",
+                        target: ship2_key
+                    }
+                });
+            }, 3000);
         }
-    };
 
-    multiuser.addListener(obj);
+        setTimeout(tellShipOneToKillShip2, 5000);
+    }
 
-    buildShip(function(s) {
-        s.effects.team = 1;
+    buildShip(1, function(s) {
+        //s.effects.team = 1;
         s.position = { x: 2, y: 2, z: 2 };
     });
+
+    tellShipOneToKillShip2();
 })();

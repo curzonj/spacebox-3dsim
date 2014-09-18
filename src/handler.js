@@ -1,6 +1,9 @@
 (function() {
     'use strict';
 
+    var EventEmitter = require('events').EventEmitter;
+    var extend = require('extend');
+    var util = require('util');
     var WebSocket = require('ws');
     var worldState = require('./world_state.js');
     var multiuser = require('./multiuser.js');
@@ -13,7 +16,9 @@
         this.onConnectionOpen();
     };
 
-    Handler.prototype = {
+    util.inherits(Handler, EventEmitter);
+
+    extend(Handler.prototype, {
         constructor: Handler,
         setupConnectionCallbacks: function() {
             this.ws.on('message', this.onWSMessageReceived.bind(this));
@@ -76,7 +81,7 @@
         },
         sanitizeState: function(values) {
             // TODO allow the client access to it's own subsystems
-            var safeAttrs = ['type', 'position', 'velocity', 'facing', 'tombstone', 'health_pct'];
+            var safeAttrs = ['type', 'position', 'velocity', 'facing', 'tombstone', 'health_pct', 'account'];
             var safeValues = {};
 
             safeAttrs.forEach(function(name) {
@@ -92,6 +97,8 @@
                     safeValues[n] = values.effects[n];
                 });
             }
+
+            this.emit('sanitizeClientValues', values, safeValues);
 
             return safeValues;
         },
@@ -111,6 +118,6 @@
         worldTick: function(tickMs) {
 
         }
-    };
+    });
 
 })();

@@ -1,4 +1,5 @@
 define([
     './wobble',
-    './shooting'
+    './shooting',
+    './html_overlay'
 ], function() { });

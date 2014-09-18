@@ -1,9 +1,9 @@
-#tracking-overlay
+.tracking-overlay
 {
-    background: url('../../assets/target.png');
+    /* background: url('../../assets/target.png'); */
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 36px;
-    height: 36px;
+    top: -10;
+    left: -10;
+    width: 3px;
+    height: 3px;
 }

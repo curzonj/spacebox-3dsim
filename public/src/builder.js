@@ -3,26 +3,6 @@ define(['jquery', 'three', 'tween', './container', './stats', './renderer', './c
 
         'use strict';
 
-        var projector = new THREE.Projector();
-
-        function placeCircle(object3d) {
-            var elem = $('#tracking-overlay');
-
-            var v = projector.projectVector( object3d.position.clone(), camera );
-            console.log(v);
-            var percX = (v.x + 1) / 2;
-            var percY = (-v.y + 1) / 2;
-            console.log("percX", percX, "precY", percY);
-            console.log("width", renderer.domElement.offsetWidth, "precY", renderer.domElement.offsetHeight);
-            var left = percX * renderer.domElement.offsetWidth;
-            var top = percY * renderer.domElement.offsetHeight;
-            console.log(left, top);
-
-            elem
-                .css('left', (left - elem.width() / 2) + 'px')
-                .css('top', (top - elem.height() / 2) + 'px');
-        }
-
         function Builder() {
             this.pendingCommands = [];
             this.paused = false;
@@ -34,21 +14,6 @@ define(['jquery', 'three', 'tween', './container', './stats', './renderer', './c
             constructor: Builder,
             start: function() {
                 this.openConnection();
-
-                var self = this;
-                worldState.registerMutator(['team'], function(key, values) {
-                    var obj = worldState.get(key);
-                    self.targetShip = obj.object3d;
-                    console.log(key);
-
-                    if (self.targetShip && self.overlay === undefined) {
-                        var elem = document.createElement("div");
-                        elem.setAttribute("id", "tracking-overlay");
-                        container.appendChild(elem);
-
-                        self.overlay = $(elem);
-                    }
-                });
 
                 this.render(0);
 
@@ -76,6 +41,8 @@ define(['jquery', 'three', 'tween', './container', './stats', './renderer', './c
                 connection.onopen = function() {
                     //connection.send('Ping'); // Send the message 'Ping' to the server
                     console.log("reseting the world");
+                    // TODO as soon as this opens we start receiving
+                    // messages, is there a race condition?
                     sceneCtl.create();
                     worldState.reset();
                 };
@@ -147,9 +114,7 @@ define(['jquery', 'three', 'tween', './container', './stats', './renderer', './c
 
                 renderer.render(scene, camera);
 
-                if (!this.paused && this.targetShip) {
-                    placeCircle(this.targetShip);
-                }
+                $(renderer).trigger("renderComplete");
 
                 stats.update();
             }

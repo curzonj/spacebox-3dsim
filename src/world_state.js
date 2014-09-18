@@ -1,6 +1,9 @@
 (function() {
     'use strict';
 
+    var EventEmitter = require('events').EventEmitter;
+    var extend = require('extend');
+    var util = require('util');
     var uuidGen = require('node-uuid');
 
     // WorldState is a private function so it's safe
@@ -17,9 +20,9 @@
 
     function WorldState() {}
 
-    WorldState.prototype = {
-        constructor: WorldState,
+    util.inherits(WorldState, EventEmitter);
 
+    extend(WorldState.prototype, {
         // TODO implement the distance limit
         scanKeysDistanceFrom: function(coords) {
             return Object.keys(worldStateStorage);
@@ -43,6 +46,8 @@
 
         addObject: function(values) {
             var id = uuidGen.v1();
+
+            this.emit('worldStatePrepareNewObject', values);
 
             this.mutateWorldState(id, 0, values);
 
@@ -146,7 +151,7 @@
                 }
             });
         }
-    };
+    });
 
     module.exports = new WorldState();
 })();

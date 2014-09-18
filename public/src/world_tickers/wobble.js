@@ -1,5 +1,7 @@
 define(['three', 'tween', '../sceneCtl', '../world_state'], function(THREE, TWEEN, sceneCtl, worldState) {
 
+    'use strict';
+
     worldState.registerMutator(['rotation'], function(key, values) {
         var obj = worldState.get(key);
 
