@@ -20,8 +20,10 @@
                             }
                         });
                     } else {
-                        if (target.values.health > ship.values.damage) {
-                            var health = target.values.health - ship.values.damage;
+                        var damage = ship.values.weapon.damage;
+
+                        if (target.values.health > damage) {
+                            var health = target.values.health - damage;
                             worldState.mutateWorldState(target.key, target.rev, {
                                 health: health,
                                 health_pct: health / target.values.maxHealth

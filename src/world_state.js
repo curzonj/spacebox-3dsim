@@ -6,6 +6,8 @@
     var util = require('util');
     var uuidGen = require('node-uuid');
 
+    var deepMerge = require('./deepMerge.js');
+
     // WorldState is a private function so it's safe
     // to declare these here.
     var listeners = [];
@@ -26,6 +28,10 @@
         // TODO implement the distance limit
         scanKeysDistanceFrom: function(coords) {
             return Object.keys(worldStateStorage);
+        },
+
+        getHack: function() {
+            return worldStateStorage;
         },
 
         scanDistanceFrom: function(coords, type) {
@@ -89,21 +95,6 @@
 
             if (worldStateStorage[key] === undefined) {
                 worldStateStorage[key] = old;
-            }
-
-            function deepMerge(src, tgt) {
-                for (var attrname in src) {
-                    var v = src[attrname];
-                    if (typeof v == "object" &&
-                        tgt.hasOwnProperty(attrname) &&
-                        (typeof(tgt[attrname])) == "object") {
-
-                        deepMerge(v, tgt[attrname]);
-                    } else {
-                        tgt[attrname] = v;
-                    }
-                }
-
             }
 
             deepMerge(patch, old.values);

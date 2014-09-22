@@ -1,83 +1,179 @@
-(function() {
-    'use strict';
+'use strict';
 
-    var worldState = require('../world_state.js'),
-        multiuser = require('../multiuser.js');
+var Q = require('q');
+var qhttp = require("q-io/http");
 
-    function buildShip(account, fn) {
-        // TODO load this from tech
-        var obj = {
-            type: 'spaceship',
-            account: account,
-            maxHealth: 30,
-            health: 30,
-            health_pct: 100,
-            damage: 1,
+var deepMerge = require('../deepMerge.js'),
+    worldState = require('../world_state.js'),
+    multiuser = require('../multiuser.js');
 
-            position: { x: 0, y: 0, z: 0 },
-            velocity: { x: 0, y: 0, z: 0 },
-            facing: { x: 0, y: 0, z: 0, w: 1 },
+var blueprintsCache;
 
-            subsystems: ["engine", "weapon"],
-            effects: {},
-            engine: {
-                maxVelocity: 1.0,
-                maxTheta: Math.PI / 10,
-                maxThrust: 0.1,
-                state: "none" // orbit, approach, etc OR manual
-            },
-            weapon: {
-                state: "none"
-            }
-        };
-        fn(obj);
+function getBlueprints() {
+    if (blueprintsCache !== undefined) {
+        return Q.fcall(function() {
+            return blueprintsCache;
+        });
+    } else {
+        return qhttp.read(process.env.TECHDB_URL + '/blueprints').then(function(b) {
+            blueprintsCache = JSON.parse(b.toString());
 
-        return worldState.addObject(obj);
+            return getBlueprints();
+        });
+    }
+}
+
+var auth_token;
+function getAuthToken() {
+    return Q.fcall(function() {
+        var now = new Date().getTime();
+
+        if (auth_token !== undefined && auth_token.expires > now) {
+            return auth_token.token;
+        } else {
+            return qhttp.read({
+                url: process.env.AUTH_URL + '/auth?ttl=3600',
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": 'Basic ' + new Buffer(process.env.INTERNAL_CREDS).toString('base64')
+                }
+            }).then(function(b) {
+                auth_token = JSON.parse(b.toString());
+                return auth_token.token;
+            });
+        }
+    });
+}
+
+function buildShip(account, fn) {
+    function randomAxis() {
+        return ((10 * Math.random()) - 5);
     }
 
-    function tellShipOneToKillShip2() {
-        // TODO ship1 should specifically kill team 2 ships
-        var spaceships = worldState.scanDistanceFrom(undefined, "spaceship");
+    return getBlueprints().then(function(blueprints) {
+        var blueprint = blueprints["6e573ecc-557b-4e05-9f3b-511b2611c474"];
+        var ship = deepMerge(blueprint, {
+            account: account,
+            health_pct: 100,
+            effects: {},
 
-        if (spaceships.length < 2) {
-            var ship1 = spaceships[0];
+            position: {
+                x: randomAxis(),
+                y: randomAxis(),
+                z: randomAxis(),
+            },
+            velocity: {
+                x: 0,
+                y: 0,
+                z: 0
+            },
+            facing: {
+                x: 0,
+                y: 0,
+                z: 0,
+                w: 1
+            }
+        });
 
-            var ship2_key = buildShip(2, function(s) {
-                s.position = {
-                    x: Math.random(),
-                    y: -1 * Math.random(),
-                    z: Math.random()
-                };
+        ship.health = ship.maxHealth;
 
-                s.velocity.z = 0.01;
-            });
+        ship.subsystems.forEach(function(s) {
+            ship[s].state = "none";
+        });
 
-            worldState.mutateWorldState(ship1.key, ship1.rev, {
-                engine: {
-                    state: "orbit",
-                    orbitRadius: 1,
-                    orbitTarget: ship2_key
-                }
-            });
-
-            setTimeout(function() {
-                ship1 = worldState.get(ship1.key);
-                worldState.mutateWorldState(ship1.key, ship1.rev, {
-                    weapon: {
-                        state: "shoot",
-                        target: ship2_key
-                    }
-                });
-            }, 3000);
+        if (fn !== undefined) {
+            fn(ship);
         }
 
-        setTimeout(tellShipOneToKillShip2, 5000);
-    }
+        console.log("Adding a ship for account "+account);
+        return worldState.addObject(ship);
+    });
+}
 
-    buildShip(1, function(s) {
-        //s.effects.team = 1;
-        s.position = { x: 2, y: 2, z: 2 };
+function setShipTarget(ship1, ship2) {
+    worldState.mutateWorldState(ship1.key, ship1.rev, {
+        engine: {
+            state: "orbit",
+            orbitRadius: 1,
+            orbitTarget: ship2.key
+        }
     });
 
-    tellShipOneToKillShip2();
-})();
+    setTimeout(function() {
+        ship1 = worldState.get(ship1.key);
+        worldState.mutateWorldState(ship1.key, ship1.rev, {
+            weapon: {
+                state: "shoot",
+                target: ship2.key
+            }
+        });
+    }, 1000 + (Math.random * 3000));
+}
+
+function autoSpawn(accountList) {
+    var spaceships = worldState.scanDistanceFrom(undefined, "spaceship");
+    var byAccount = mapByAccount(spaceships);
+
+    accountList.forEach(function(account) {
+        if (byAccount[account] === undefined) {
+            buildShip(account).done();
+            buildShip(account).done();
+
+        } else if (byAccount[account].length < 2) {
+            buildShip(account).done();
+        }
+    });
+}
+
+function mapByAccount(spaceships) {
+    var byAccount = {};
+
+    spaceships.forEach(function(ship) {
+        var account = ship.values.account;
+        if (byAccount[account] === undefined) {
+            byAccount[account] = [];
+        }
+
+        byAccount[account].push(ship);
+    });
+
+    return byAccount;
+}
+
+function autoTargetEnemy() {
+    var spaceships = worldState.scanDistanceFrom(undefined, "spaceship");
+    var byAccount = mapByAccount(spaceships);
+
+    function getEnemy(account) {
+        for (var e in byAccount) {
+            if (e !== account) {
+                return e;
+            }
+        }
+    }
+
+    spaceships.forEach(function(ship) {
+        if (ship.values.weapon.state != "shoot") {
+            var enemy = getEnemy(ship.values.account);
+            var target = byAccount[enemy] && byAccount[enemy].length > 0 && byAccount[enemy][0];
+
+            if (target) setShipTarget(ship, target);
+        }
+    });
+}
+
+setInterval(function() {
+    var list = worldState.scanDistanceFrom(undefined, "spaceship");
+    var byAccount = mapByAccount(list);
+
+    list.forEach(function(ship) {
+        console.log(ship.values.account+" health "+ship.values.health);
+    });
+
+    Object.keys(byAccount).forEach(function(account) {
+        console.log("account "+account+" has "+byAccount[account].length+" ships");
+    });
+}, 1000);
+
+setInterval(autoSpawn, 1000, [1, 2]);
+setInterval(autoTargetEnemy, 100);
