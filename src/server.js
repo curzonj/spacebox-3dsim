@@ -6,6 +6,8 @@ var express = require("express");
 var logger = require('morgan');
 var bodyParser = require('body-parser');
 var uuidGen = require('node-uuid');
+var Q = require('q');
+var qhttp = require("q-io/http");
 
 var app = express();
 var port = process.env.PORT || 5000;
@@ -17,12 +19,85 @@ app.use(bodyParser.urlencoded({
     extended: false
 }));
 
+var auth_token;
+
+function getAuthToken() {
+    return Q.fcall(function() {
+        var now = new Date().getTime();
+
+        if (auth_token !== undefined && auth_token.expires > now) {
+            return auth_token.token;
+        } else {
+            return qhttp.read({
+                url: process.env.AUTH_URL + '/auth?ttl=3600',
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": 'Basic ' + new Buffer(process.env.INTERNAL_CREDS).toString('base64')
+                }
+            }).then(function(b) {
+                auth_token = JSON.parse(b.toString());
+                return auth_token.token;
+            });
+        }
+    });
+}
+
+function authorize(req, restricted) {
+    var auth_header = req.headers.authorization;
+
+    if (auth_header === undefined) {
+        // We do this so that the Q-promise error handling
+        // will catch it
+        return Q.fcall(function() {
+            throw new Error("not authorized");
+        });
+    }
+
+    var parts = auth_header.split(' ');
+
+    // TODO make a way for internal apis to authorize
+    // as a specific account without having to get a
+    // different bearer token for each one. Perhaps
+    // auth will return a certain account if the authorized
+    // token has metadata appended to the end of it
+    // or is fernet encoded.
+    if (parts[0] != "Bearer") {
+        throw new Error("not authorized");
+    }
+
+    // This will fail if it's not authorized
+    return qhttp.read({
+        method: "POST",
+        url: process.env.AUTH_URL + '/token',
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: [JSON.stringify({
+            token: parts[1],
+            restricted: (restricted === true)
+        })]
+    }).then(function(body) {
+        return JSON.parse(body.toString());
+    }).fail(function(e) {
+        throw new Error("not authorized");
+    });
+}
+
 var server = http.createServer(app);
 server.listen(port);
 
 var WebSocketServer = WebSockets.Server,
     wss = new WebSocketServer({
-        server: server
+        server: server,
+        verifyClient: function (info, callback) {
+            authorize(info.req).then(function(auth) {
+                info.req.authentication = auth;
+                callback(true);
+            }, function(e) {
+                info.req.authentication = {};
+                callback(true);
+            });
+        }
     });
 
 require("./world_tickers/load_all.js");

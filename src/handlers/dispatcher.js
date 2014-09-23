@@ -1,23 +1,22 @@
-(function() {
-    'use strict';
+'use strict';
 
-    var commands = [ "align" ];
-    var processors = {};
+// TODO some of these are restricted and need to be authenticated
+var commands = [ "spawn", "target"  ];
+var processors = {};
 
-    commands.forEach(function(cmd) {
-        processors[cmd] = require('./'+cmd+'.js');
-    });
+commands.forEach(function(cmd) {
+    processors[cmd] = require('./'+cmd+'.js');
+});
 
-    module.exports = {
-        dispatch: function(msg, pilot) {
-            var cmd = msg.command;
+module.exports = {
+    dispatch: function(msg, info) {
+        var cmd = msg.command;
 
-            if (commands.indexOf(command) == -1) {
-                console.log("invalid command");
-                return ;
-            }
-
-            processors[cmd](msg, pilot);
+        if (commands.indexOf(cmd) == -1) {
+            console.log("invalid command: "+cmd);
+            return ;
         }
-    };
-})();
+
+        processors[cmd](msg, info);
+    }
+};
