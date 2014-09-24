@@ -7,14 +7,48 @@ var WebSocket = require('ws');
 var worldState = require('./world_state.js');
 var multiuser = require('./multiuser.js');
 var dispatcher = require('./handlers/dispatcher.js');
+var Q = require('q');
+var qhttp = require("q-io/http");
+
+var auth_token;
+function getAuthToken() {
+    return Q.fcall(function() {
+        var now = new Date().getTime();
+
+        if (auth_token !== undefined && auth_token.expires > now) {
+            return auth_token.token;
+        } else {
+            return qhttp.read({
+                url: process.env.AUTH_URL + '/auth?ttl=3600',
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": 'Basic ' + new Buffer(process.env.INTERNAL_CREDS).toString('base64')
+                }
+            }).then(function(b) {
+                auth_token = JSON.parse(b.toString());
+                return auth_token.token;
+            });
+        }
+    });
+}
 
 var Handler = module.exports = function(ws) {
     this.ws = ws;
 
     this.auth = ws.upgradeReq.authentication;
 
-    this.setupConnectionCallbacks();
-    this.onConnectionOpen();
+    var self = this;
+    self.getArenaToken().then(function() {
+        self.setupConnectionCallbacks();
+
+        self.send({
+            type: "arenaAccount",
+            account: self.auth
+        });
+
+        // TODO the flow of this should be reworked
+        self.onConnectionOpen();
+    });
 };
 
 util.inherits(Handler, EventEmitter);
@@ -24,6 +58,29 @@ extend(Handler.prototype, {
     setupConnectionCallbacks: function() {
         this.ws.on('message', this.onWSMessageReceived.bind(this));
         this.ws.on('close', this.onConnectionClosed.bind(this));
+    },
+    getArenaToken: function() {
+        // NOTE this is basically the pattern for the arena handler
+        var self = this;
+        return getAuthToken().then(function(token) {
+            // This will fail if it's not authorized
+            return qhttp.read({
+                method: "POST",
+                url: process.env.AUTH_URL + '/accounts/temporary',
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": 'Bearer ' + token
+                },
+                body: [JSON.stringify({
+                    parent: self.auth.account,
+                    ttl: 300, // 5min
+                })]
+            }).then(function(body) {
+                self.auth = JSON.parse(body.toString());
+            }).fail(function(e) {
+                throw new Error("not authorized");
+            });
+        });
     },
     onConnectionOpen: function() {
         console.log("connected");

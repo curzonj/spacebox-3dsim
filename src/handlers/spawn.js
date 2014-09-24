@@ -93,5 +93,8 @@ function buildShip(account, fn) {
 
 // command == align
 module.exports = function(msg, h) {
-    buildShip(h.auth.account);
+    // TODO only privileged accounts should be able to do this
+    var account = msg.account || h.auth.account;
+
+    buildShip(account);
 };
