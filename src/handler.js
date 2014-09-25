@@ -34,21 +34,22 @@ function getAuthToken() {
 
 var Handler = module.exports = function(ws) {
     this.ws = ws;
+    this.visibilityKeys = [];
+    this.privilegedKeys = [];
 
     this.auth = ws.upgradeReq.authentication;
 
     var self = this;
-    self.getArenaToken().then(function() {
-        self.setupConnectionCallbacks();
-
-        self.send({
-            type: "arenaAccount",
-            account: self.auth
-        });
-
-        // TODO the flow of this should be reworked
-        self.onConnectionOpen();
-    });
+    Q.fcall(function() {
+        if (ws.upgradeReq.url == '/arena') {
+            return self.getArenaToken().then(function() {
+                self.send({
+                    type: "arenaAccount",
+                    account: self.auth
+                });
+            });
+        }
+    }).then(self.onConnectionOpen.bind(self));
 };
 
 util.inherits(Handler, EventEmitter);
@@ -60,7 +61,7 @@ extend(Handler.prototype, {
         this.ws.on('close', this.onConnectionClosed.bind(this));
     },
     getArenaToken: function() {
-        // NOTE this is basically the pattern for the arena handler
+        // TODO drop the connection when the arena account expires
         var self = this;
         return getAuthToken().then(function(token) {
             // This will fail if it's not authorized
@@ -83,6 +84,7 @@ extend(Handler.prototype, {
         });
     },
     onConnectionOpen: function() {
+        this.setupConnectionCallbacks();
         console.log("connected");
 
         // We listen for updates so that we don't
@@ -90,6 +92,8 @@ extend(Handler.prototype, {
         // full state.
         worldState.addListener(this);
         this.sendWorldState();
+
+        this.send({type:'connectionReady'});
     
         // This is not really true
         multiuser.onClientJoined(this);
@@ -101,14 +105,26 @@ extend(Handler.prototype, {
     },
     onWSMessageReceived: function(message) {
         try {
-            dispatcher.dispatch(JSON.parse(message), this);
+            if (this.auth.account !== undefined) {
+                dispatcher.dispatch(JSON.parse(message), this);
+            }
         } catch(e) {
             // TODO send an error back to the client
             console.log(e);
         }
     },
     sendState: function(ts, key, oldRev, newRev, values) {
-        var safeValues = this.sanitizeState(values);
+        var i = this.visibilityKeys.indexOf(key);
+
+        if (i == -1) oldRev = 0;
+        if (!this.checkVisibility(key, values, i)) return;
+
+        var safeValues;
+        if (this.checkPrivilege(key, values)) {
+            safeValues = values;
+        } else {
+            safeValues = this.sanitizeState(values);
+        }
 
         // Currently we have to send the messages even if
         // nothing public was changed or the revisions
@@ -131,6 +147,47 @@ extend(Handler.prototype, {
         } else {
             console.log("failed to send message, websocket closed or closing");
         }
+    },
+    checkVisibility: function(key, values, i) {
+        if (i === undefined) {
+            // it's an optimization to only look this up once
+            i = this.visibilityKeys.indexOf(key);
+        }
+
+        if (values.tombstone) {
+            if (i > -1) {
+                this.visibilityKeys.splice(i, 1);
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            if (i == -1) {
+                this.visibilityKeys.push(key);
+            }
+
+            // show everybody everything for now
+            return true;
+        }
+    },
+    checkPrivilege: function(key, values) {
+        if (this.auth.privileged) return true;
+
+        var i = this.privilegedKeys.indexOf(key);
+
+        if (values.tombstone) {
+            if (i > -1) {
+                this.privilegedKeys.splice(i, 1);
+            }
+        }
+
+       if (i > -1) {
+           return true;
+       } else if (values.account !== undefined && values.account == this.auth.account) {
+           this.privilegedKeys.push(key);
+       } else {
+           return false;
+       }
     },
     sanitizeState: function(values) {
         // TODO allow the client access to it's own subsystems
@@ -165,11 +222,6 @@ extend(Handler.prototype, {
     },
     onWorldStateChange: function(ts, key, oldRev, newRev, patch) {
         this.sendState(ts, key, oldRev, newRev, patch);
-    },
-
-    // this is called on every tick
-    worldTick: function(tickMs) {
-
     }
 });
 

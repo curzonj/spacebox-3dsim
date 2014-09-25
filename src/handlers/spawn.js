@@ -92,9 +92,21 @@ function buildShip(account, fn) {
 }
 
 // command == align
-module.exports = function(msg, h) {
-    // TODO only privileged accounts should be able to do this
-    var account = msg.account || h.auth.account;
+module.exports.spawn = function(msg, h) {
+    var account;
+
+    if (h.auth.privileged) {
+        if (msg.account === undefined) {
+            // TODO send an error
+            return;
+        }
+
+        account = msg.account;
+    } else if(msg.account !== undefined)  {
+        // TODO send an error
+    } else {
+        account = h.auth.account;
+    }
 
     buildShip(account);
 };

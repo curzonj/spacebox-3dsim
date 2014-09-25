@@ -24,6 +24,7 @@ define(['three', '../sceneCtl', '../world_state'], function(THREE, sceneCtl, wor
     };
 
     var lasers = [];
+    window.laserList = lasers;
 
     worldState.registerMutator(['shooting'], function(key, values) {
         // The world ticker keeps track of the laser after it's created
@@ -33,6 +34,7 @@ define(['three', '../sceneCtl', '../world_state'], function(THREE, sceneCtl, wor
             if (ship1 && ship1.object3d && ship1.laser === undefined) {
 
                 var laser = ship1.laser = new THREEx.LaserBeam();
+                laser.object3d.name = key+'-laser';
                 lasers.push(ship1.key);
 
                 laser.origin = ship1.object3d;
@@ -54,12 +56,14 @@ define(['three', '../sceneCtl', '../world_state'], function(THREE, sceneCtl, wor
                 return;
             }
 
-            if (ship1.values.shooting === -1 || ship1.values.shooting === undefined) {
+            if (ship1.values.tombstone || ship1.values.shooting === -1 || ship1.values.shooting === undefined) {
                 ship1.laser.setTarget(-1);
             } else {
                 var ship2 = worldState.get(ship1.values.shooting);
 
-                if (ship2.object3d) {
+                // When first loading the world, we make not have
+                // a record of ship2 yet
+                if (ship2 && ship2.object3d && ship2.values.tombstone !== true) {
                     ship1.laser.setTarget(ship2.object3d.position);
                 } else {
                     ship1.laser.setTarget(-1);

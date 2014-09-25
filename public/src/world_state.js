@@ -24,6 +24,9 @@ define(function() {
         reset: function() {
             worldState = {};
         },
+        getHack: function() {
+            return worldState;
+        },
         get: function(key) {
             if (key !== undefined) {
                 return worldState[key.toString()];

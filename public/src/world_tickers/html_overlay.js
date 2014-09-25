@@ -60,7 +60,14 @@ define(['../world_state', '../renderer', '../camera', '../container'], function(
                 elem.css('left', Math.floor(left - 24) + 'px')
                     .css('top', Math.floor(top - 24) + 'px');
             } else {
-                console.log("missing", key);
+                if (elem !== undefined) {
+                    elem.remove();
+                } else {
+                    console.log("missing, removing", key);
+
+                    var i = colorTags.indexOf(key);
+                    if (i > -1) colorTags.splice(i, 1);
+                }
             }
         });
 

@@ -84,7 +84,7 @@ define(['jquery', 'three', 'tween', './container', './stats', './renderer', './c
                 this.pendingCommands = [];
 
                 list.forEach(function(cmd) {
-                    //console.log(cmd.state);
+                    console.log(cmd.state);
                     worldState.onStateChange(tickMs, cmd.timestamp, cmd.state);
                 });
 
