@@ -91,6 +91,7 @@
                 } else {
                     worldState.mutateWorldState(ship.key, ship.rev, {
                         engine: {
+                            state: "none",
                             acceleration: 0
                         }
                     });
