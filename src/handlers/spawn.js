@@ -108,5 +108,5 @@ module.exports.spawn = function(msg, h) {
         account = h.auth.account;
     }
 
-    buildShip(account);
+    buildShip(account).done();
 };
