@@ -127,6 +127,12 @@ app.post('/spodb/:uuid', function(req, res) {
     res.sendStatus(204);
 });
 // TODO end spodb
+//
+app.get('/endpoints', function(req, res) {
+    res.send({
+        auth: process.env.AUTH_URL
+    });
+});
 
 var Handler = require('./handler.js');
 wss.on('connection', function(ws) {
