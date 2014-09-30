@@ -106,20 +106,4 @@ define(['three', 'tween', '../sceneCtl', '../world_state'], function(THREE, TWEE
         }
     });
 
-    worldState.registerHandler('spaceship', function(key, values) {
-        THREEx.SpaceShips.loadSpaceFighter01(function(object3d) {
-            var ship = worldState.get(key);
-            ship.object3d = object3d;
-            object3d.name = key; // key is a string
-
-            var v = values.position;
-            object3d.baseScale = object3d.scale.length();
-            object3d.scale.multiplyScalar(0.25);
-
-            worldState.asyncMutation(ship.key);
-
-            sceneCtl.get().add(object3d);
-        });
-    });
-
 });

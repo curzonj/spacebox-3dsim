@@ -1,4 +1,4 @@
-define(['jquery', 'three', 'tween', './container', './stats', './renderer', './camera', './controls', './sceneCtl', './world_state', './keypressed', './world_tickers/load_all'],
+define(['jquery', 'three', 'tween', './container', './stats', './renderer', './camera', './controls', './sceneCtl', './world_state', './keypressed', './world_tickers/load_all', './models/loader'],
     function($, THREE, TWEEN, container, stats, renderer, camera, controls, sceneCtl, worldState, keyPressed) {
 
         'use strict';
@@ -84,7 +84,7 @@ define(['jquery', 'three', 'tween', './container', './stats', './renderer', './c
                 this.pendingCommands = [];
 
                 list.forEach(function(cmd) {
-                    console.log(cmd.state);
+                    //console.log(cmd.state);
                     worldState.onStateChange(tickMs, cmd.timestamp, cmd.state);
                 });
 

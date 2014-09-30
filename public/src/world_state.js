@@ -35,9 +35,8 @@ define(function() {
         registerTicker: function(fn) {
             this.tickers.push(fn);
         },
-        registerHandler: function(type, fn) {
+        registerHandler: function(fn) {
             this.handlers.push({
-                type: type,
                 fn: fn
             });
         },
@@ -103,13 +102,11 @@ define(function() {
         },
         notifyHandlers: function(key, values) {
             this.handlers.forEach(function(o) {
-                if (o.type == values.type) {
-                    //try {
-                        o.fn(key, values);
-                    /*} catch (err) {
-                        console.log(err);
-                    } */
-                }
+                //try {
+                    o.fn(key, values);
+                /*} catch (err) {
+                    console.log(err);
+                } */
             });
         },
         asyncMutation: function(key) {

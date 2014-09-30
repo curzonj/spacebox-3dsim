@@ -46,67 +46,82 @@ function getAuthToken() {
     });
 }
 
-function buildShip(account, fn) {
-    function randomAxis() {
-        return ((10 * Math.random()) - 5);
-    }
-
+function spawnThing(msg, h, fn) {
     return getBlueprints().then(function(blueprints) {
-        var blueprint = blueprints["6e573ecc-557b-4e05-9f3b-511b2611c474"];
-        var ship = deepMerge(blueprint, {
-            account: account,
-            health_pct: 100,
-            effects: {},
+        var account, blueprint = blueprints[msg.blueprint];
 
-            position: {
-                x: randomAxis(),
-                y: randomAxis(),
-                z: randomAxis(),
-            },
-            velocity: {
-                x: 0,
-                y: 0,
-                z: 0
-            },
-            facing: {
-                x: 0,
-                y: 0,
-                z: 0,
-                w: 1
-            }
-        });
-
-        ship.health = ship.maxHealth;
-
-        ship.subsystems.forEach(function(s) {
-            ship[s].state = "none";
-        });
-
-        if (fn !== undefined) {
-            fn(ship);
-        }
-
-        console.log("Adding a ship for account " + account);
-        return worldState.addObject(ship);
-    });
-}
-
-// command == align
-module.exports.spawn = function(msg, h) {
-    var account;
-
-    if (h.auth.privileged) {
-        if (msg.account === undefined) {
+        if (blueprint === undefined) {
             // TODO send an error
             return;
         }
 
-        account = msg.account;
-    } else if(msg.account !== undefined)  {
-        // TODO send an error
-    } else {
-        account = h.auth.account;
-    }
+        if (typeof msg.position != 'object') {
+            // TODO send an error
+            return;
+        }
 
-    buildShip(account).done();
+        if (h.auth.privileged) {
+            if (msg.account === undefined) {
+                // TODO send an error
+                return;
+            }
+
+            account = msg.account;
+        } else if (msg.account !== undefined) {
+            // TODO send an error
+        } else {
+            account = h.auth.account;
+        }
+
+        var position = {},
+            axis = ['x', 'y', 'z'];
+        axis.forEach(function(a) {
+            position[a] = parseInt(msg.position[a]);
+        });
+
+        var obj = deepMerge(blueprint, {
+            account: account,
+            health_pct: 100,
+            effects: {},
+            position: position
+        });
+
+        obj.health = obj.maxHealth;
+
+        if (fn !== undefined) {
+            // TODO error handling
+            fn(obj);
+        }
+
+        var uuid = worldState.addObject(obj);
+        console.log("build a %s as %s", msg.blueprint, uuid);
+    });
+
+}
+
+module.exports = {
+    'spawn': function(msg, h) {
+        spawnThing(msg, h, function(ship) {
+            deepMerge({
+                velocity: {
+                    x: 0,
+                    y: 0,
+                    z: 0
+                },
+                facing: {
+                    x: 0,
+                    y: 0,
+                    z: 0,
+                    w: 1
+                }
+            }, ship);
+
+            ship.subsystems.forEach(function(s) {
+                ship[s].state = "none";
+            });
+        }).done();
+    },
+    'spawnStructure': function(msg, h) {
+        spawnThing(msg, h).done();
+    }
 };

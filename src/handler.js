@@ -190,8 +190,7 @@ extend(Handler.prototype, {
        }
     },
     sanitizeState: function(values) {
-        // TODO allow the client access to it's own subsystems
-        var safeAttrs = ['type', 'position', 'velocity', 'facing', 'tombstone', 'health_pct', 'account'];
+        var safeAttrs = ['type', 'position', 'velocity', 'facing', 'tombstone', 'health_pct', 'account', 'model_name', 'model_scale'];
         var safeValues = {};
 
         safeAttrs.forEach(function(name) {
