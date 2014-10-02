@@ -105,7 +105,6 @@ require("./world_tickers/load_all.js");
 var worldState = require('./world_state.js');
 worldState.runWorldTicker();
 
-// TODO this doesn't even belong in this app
 var debug = require('debug')('spodb');
 app.get('/spodb', function(req, res) {
     var hash = {},
@@ -130,7 +129,10 @@ app.post('/spodb/:uuid', function(req, res) {
 //
 app.get('/endpoints', function(req, res) {
     res.send({
-        auth: process.env.AUTH_URL
+        space: process.env.SPODB_URL,
+        auth: process.env.AUTH_URL,
+        build: process.env.BUILD_URL,
+        inventory: process.env.INVENTORY_URL
     });
 });
 
