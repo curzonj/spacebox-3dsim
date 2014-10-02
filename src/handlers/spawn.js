@@ -163,9 +163,9 @@ module.exports = {
             blueprint: loadout.blueprint,
             // TODO copy the position of the spawnpoint
             position: {
-                x: 0,
-                y: 0,
-                z: 0
+                x: 1,
+                y: 1,
+                z: 1
             }
         }, h).then(function(uuid) {
             var list = [];
