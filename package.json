@@ -6,6 +6,7 @@
     "node": "0.10.x"
   },
   "dependencies": {
+    "spacebox-common": "curzonj/spacebox-nodejs-common",
     "bower": "latest",
     "express": "latest",
     "ws": "latest",

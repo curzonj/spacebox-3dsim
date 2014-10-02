@@ -110,7 +110,7 @@ extend(Handler.prototype, {
             }
         } catch(e) {
             // TODO send an error back to the client
-            console.log(e);
+            console.log('error handling command', e, e.stack);
         }
     },
     sendState: function(ts, key, oldRev, newRev, values) {

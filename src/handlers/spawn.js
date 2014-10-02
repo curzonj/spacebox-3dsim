@@ -3,6 +3,9 @@
 var Q = require('q');
 var qhttp = require("q-io/http");
 var uuidGen = require('node-uuid');
+var C = require('spacebox-common');
+
+Q.longStackSupport = true;
 
 var deepMerge = require('../deepMerge.js'),
     worldState = require('../world_state.js'),
@@ -22,29 +25,6 @@ function getBlueprints() {
             return getBlueprints();
         });
     }
-}
-
-var auth_token;
-
-function getAuthToken() {
-    return Q.fcall(function() {
-        var now = new Date().getTime();
-
-        if (auth_token !== undefined && auth_token.expires > now) {
-            return auth_token.token;
-        } else {
-            return qhttp.read({
-                url: process.env.AUTH_URL + '/auth?ttl=3600',
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": 'Basic ' + new Buffer(process.env.INTERNAL_CREDS).toString('base64')
-                }
-            }).then(function(b) {
-                auth_token = JSON.parse(b.toString());
-                return auth_token.token;
-            });
-        }
-    });
 }
 
 function spawnThing(msg, h, fn) {
@@ -150,48 +130,14 @@ function updateInventory(account, data) {
         quantity: quantity
     }]
     */
-    return getAuthToken().then(function(token) {
-        return qhttp.request({
-            method: "POST",
-            url: process.env.INVENTORY_URL + '/inventory',
-            headers: {
-                "Authorization": "Bearer " + token + '/' + account,
-                "Content-Type": "application/json"
-            },
-            body: [JSON.stringify(data)]
-        }).then(function(resp) {
-            if (resp.status !== 204) {
-                resp.body.read().then(function(b) {
-                    console.log("inventory " + resp.status + " reason: " + b.toString());
-                }).done();
-
-                throw new Error("inventory responded with " + resp.status);
-            }
-        });
+    return C.request('inventory', 'POST', 204, '/inventory', data, {
+        sudo_account: account
     });
 }
 
 function updateFacility(uuid, blueprint, account) {
-    return getAuthToken().then(function(token) {
-        return qhttp.request({
-            method: "POST",
-            url: process.env.BUILD_URL + '/facilities/' + uuid,
-            headers: {
-                "Authorization": "Bearer " + token + '/' + account,
-                "Content-Type": "application/json"
-            },
-            body: [JSON.stringify({
-                blueprint: blueprint
-            })]
-        }).then(function(resp) {
-            if (resp.status !== 201) {
-                resp.body.read().then(function(b) {
-                    console.log("build " + resp.status + " reason: " + b.toString());
-                }).done();
-
-                throw new Error("inventory responded with " + resp.status);
-            }
-        });
+    return C.request('build', 'POST', 201, '/facilities/'+uuid, {
+        blueprint: blueprint
     });
 }
 
@@ -257,25 +203,7 @@ module.exports = {
             blueprint: msg.blueprint
         }];
 
-        getAuthToken().then(function(token) {
-            return qhttp.request({
-                method: "POST",
-                url: process.env.INVENTORY_URL + '/inventory',
-                headers: {
-                    "Authorization": "Bearer " + token + '/' + h.auth.account,
-                    "Content-Type": "application/json"
-                },
-                body: [JSON.stringify(transaction)]
-            }).then(function(resp) {
-                if (resp.status !== 204) {
-                    resp.body.read().then(function(b) {
-                        console.log("inventory " + resp.status + " reason: " + b.toString());
-                    }).done();
-
-                    throw new Error("inventory responded with " + resp.status);
-                }
-            });
-        }).then(function() {
+        updateInventory(h.auth.account, transaction).then(function() {
             return spawnThing({
                 blueprint: msg.blueprint,
                 // TODO copy the position of the ship
