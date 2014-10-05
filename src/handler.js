@@ -107,6 +107,8 @@ extend(Handler.prototype, {
         try {
             if (this.auth.account !== undefined) {
                 dispatcher.dispatch(JSON.parse(message), this);
+            } else {
+                console.log("ignoring command on unauthenticated socket");
             }
         } catch(e) {
             // TODO send an error back to the client

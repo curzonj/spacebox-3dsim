@@ -185,13 +185,28 @@ module.exports = {
             });
         }).done();
     },
+    'undock': function(msg, h) {
+        console.log("got the message");
+        C.request('inventory', 'POST', 200, '/ships/'+msg.ship_uuid, {
+            in_space: true
+        }, {
+            sudo_account: h.auth.account
+        }).then(function(ship) {
+            console.log('spawning ship');
+            return spawnShip({
+                blueprint: ship.blueprint,
+                // TODO spawn it at the location it undocked from
+                position: {
+                    x: 1,
+                    y: 1,
+                    z: 1
+                }
+            }, h);
+        }).fail(function(e) {
+            console.log(e.stack);
+        }).done();
+    },
     'deploy': function(msg, h) {
-        // msg = { 
-        // shipID,
-        // slice,
-        // blueprint
-        // }
-        //
         var transaction = [{
             inventory: msg.shipID,
             slice: msg.slice,

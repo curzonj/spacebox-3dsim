@@ -24,6 +24,7 @@ handlers.forEach(function(name) {
 module.exports = {
     dispatch: function(msg, info) {
         var cmd = msg.command;
+        console.log(msg);
 
         if (processors.hasOwnProperty(cmd) && typeof processors[cmd] == 'function') {
             try {
