@@ -1,5 +1,5 @@
-define(['jquery', 'three', 'tween', './container', './stats', './renderer', './camera', './controls', './sceneCtl', './world_state', './keypressed', './world_tickers/load_all', './models/loader'],
-    function($, THREE, TWEEN, container, stats, renderer, camera, controls, sceneCtl, worldState, keyPressed) {
+define(['jquery', 'three', 'tween', './stats', './renderer', './camera', './controls', './sceneCtl', './world_state', './keypressed', './world_tickers/load_all', './models/loader'],
+    function($, THREE, TWEEN, stats, renderer, camera, controls, sceneCtl, worldState, keyPressed) {
 
         'use strict';
 

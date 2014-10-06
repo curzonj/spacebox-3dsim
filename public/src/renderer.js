@@ -1,15 +1,22 @@
-define(['three', './container'], function(THREE, container) {
+define(['three', 'jquery', './container'], function(THREE, $, container) {
 
     'use strict';
 
+    var viewport = container.viewport;
+
+    function setSizes() {
+        renderer.setSize(container.viewportWidth(), window.innerHeight);
+        var sidebar = container.sidebarWidth()+'px';
+        $('#sidebar').css('width', sidebar);
+        $(viewport).css('margin-left', sidebar);
+    }
+
     var renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth, window.innerHeight);
 
-    container.appendChild(renderer.domElement);
+    setSizes();
+    viewport.appendChild(renderer.domElement);
 
-    window.addEventListener('resize', function() {
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    }, false);
+    window.addEventListener('resize', setSizes, false);
 
     return renderer;
 });

@@ -1,4 +1,4 @@
-define(['three', './sceneCtl'], function(THREE, sceneCtl) {
+define(['three', './sceneCtl', './container'], function(THREE, sceneCtl, container) {
 
     'use strict';
 
@@ -9,13 +9,13 @@ define(['three', './sceneCtl'], function(THREE, sceneCtl) {
 
     // each unit == 100 meters
     var maxDistance = 1000;
-    var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 
+    var camera = new THREE.PerspectiveCamera(75, container.viewportWidth() / window.innerHeight, 
                                              0.1, sceneCtl.frustrumDistance+maxDistance*2);
     camera.position.z = 5;
     camera.maxDistance = maxDistance; // just a hint to the controls
 
     window.addEventListener('resize', function() {
-        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.aspect = container.viewportWidth() / window.innerHeight;
         camera.updateProjectionMatrix();
     }, false);
 

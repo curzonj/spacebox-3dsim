@@ -1,6 +1,13 @@
 define( [], function () {
-  var obj = document.body; //getElementById( 'threejs-container' );
-  //obj.innerHTML = "";
+    var self = {
+        viewport: document.getElementById('threejs-container'),
+        sidebarWidth: function() {
+            return Math.min(window.innerWidth*0.2, 200);
+        },
+        viewportWidth: function() {
+            return (window.innerWidth - self.sidebarWidth());
+        }
+    };
 
-  return obj;
+    return self;
 } );

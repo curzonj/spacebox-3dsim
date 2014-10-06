@@ -22,7 +22,7 @@ define(['../world_state', '../renderer', '../camera', '../container'], function(
             elem = document.createElement("div");
             elem.setAttribute("id", "tracking-" + key);
             elem.setAttribute("class", "tracking-overlay");
-            container.appendChild(elem);
+            container.viewport.appendChild(elem);
         }
 
         elem = $('#tracking-' + key);

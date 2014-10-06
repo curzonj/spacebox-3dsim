@@ -9,6 +9,8 @@
   "dependencies": {
     "requirejs": "latest",
     "jquery": "latest",
+    "angularjs": "latest",
+    "underscore": "latest",
     "tween": "https://github.com/sole/tween.js.git",
     "threex.planets": "https://github.com/curzonj/threex.planets.git",
     "threex.spaceships": "https://github.com/curzonj/threex.spaceships.git",

@@ -4,7 +4,7 @@ define(['stats', './container'], function(Stats, container) {
     var stats = new Stats();
     stats.domElement.style.position = 'absolute';
     stats.domElement.style.top = '0px';
-    container.appendChild( stats.domElement );
+    container.viewport.appendChild( stats.domElement );
 
     return stats;
 });
