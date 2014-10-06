@@ -1,6 +1,8 @@
 define( [], function () {
     var self = {
-        viewport: document.getElementById('threejs-container'),
+        getViewport: function() {
+            return document.getElementById('threejs-container');
+        },
         sidebarWidth: function() {
             return Math.min(window.innerWidth*0.2, 200);
         },

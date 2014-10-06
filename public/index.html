@@ -6,9 +6,16 @@
         <title>threejs space game</title>
         <link rel="stylesheet" type="text/css" href="assets/stylesheet.css" />
         <script data-main="config.js" src="bower_components/requirejs/require.js"></script>
+
+        <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.2.25/angular.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.2.25/angular-route.js"></script>
+        <script src="ang/main.js"></script>
     </head>
     <body style='margin: 0px; background-color: #000000; overflow: hidden;'>
-        <div id='sidebar'>Hello world</div>
+        <div id='sidebar' ng-app='spaceboxHUD'>
+            <div ng-view>
+            </div>
+        </div>
         <div id='threejs-container'> </div>
     </body>
 </html>

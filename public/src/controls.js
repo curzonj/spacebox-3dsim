@@ -2,7 +2,7 @@ define(['./camera', 'three', './container', 'OrbitControls'], function(camera, T
 
     'use strict';
 
-    var controls = new THREE.OrbitControls(camera, container.viewport);
+    var controls = new THREE.OrbitControls(camera, container.getViewport());
 
     controls.minDistance = 0.25;
     controls.maxDistance = camera.maxDistance;
