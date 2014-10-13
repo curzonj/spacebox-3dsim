@@ -7,10 +7,8 @@
   },
   "dependencies": {
     "spacebox-common": "curzonj/spacebox-nodejs-common",
-    "bower": "latest",
     "express": "latest",
     "ws": "latest",
-    "bower-requirejs": "latest",
     "extend": "latest",
     "morgan": "~1.3.0",
     "body-parser": "~1.8.1",
