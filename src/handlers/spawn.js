@@ -185,6 +185,8 @@ module.exports = {
                 // FIXME This could fail in soooo many partial ways
                 loadout_accounting[h.auth.account] = true;
             });
+        }).fail(function(e) {
+            console.log(e.stack);
         }).done();
     },
     'undock': function(msg, h) {
@@ -230,9 +232,13 @@ module.exports = {
                     z: 0
                 }
             }, h);
+        }).fail(function(e) {
+            console.log(e.stack);
         }).done();
     },
     'spawnStructure': function(msg, h) {
-        spawnThing(msg, h).done();
+        spawnThing(msg, h).fail(function(e) {
+            console.log(e.stack);
+        }).done();
     }
 };
