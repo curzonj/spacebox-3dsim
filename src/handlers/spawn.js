@@ -32,13 +32,11 @@ function spawnThing(msg, h, fn) {
         var account, blueprint = blueprints[msg.blueprint];
 
         if (blueprint === undefined) {
-            // TODO send an error
-            return;
+            throw new Error("no such blueprint: "+msg.blueprint)
         }
 
         if (typeof msg.position != 'object') {
-            // TODO send an error
-            return;
+            throw new Error("invalid position")
         }
 
         if (h.auth.privileged) {
