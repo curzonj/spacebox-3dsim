@@ -1,22 +1,32 @@
 'use strict';
 
-var WebSockets = require("ws");
-var http = require("http");
-var express = require("express");
-var logger = require('morgan');
-var bodyParser = require('body-parser');
-var uuidGen = require('node-uuid');
-var Q = require('q');
-var qhttp = require("q-io/http");
+var WebSockets = require("ws"),
+    http = require("http"),
+    express = require("express"),
+    logger = require('morgan'),
+    bodyParser = require('body-parser'),
+    uuidGen = require('node-uuid'),
+    Q = require('q'),
+    qhttp = require("q-io/http")
+
+var cors = require('cors')({
+    credentials: true,
+    origin: function(origin, cb) {
+        cb(null, true);
+    }
+});
 
 var app = express();
 var port = process.env.PORT || 5000;
 
 app.use(logger('dev'));
+app.use(cors);
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
     extended: false
 }));
+
+app.options("*", cors);
 
 var auth_token;
 
@@ -86,18 +96,18 @@ var server = http.createServer(app);
 server.listen(port);
 
 var WebSocketServer = WebSockets.Server,
-    wss = new WebSocketServer({
-        server: server,
-        verifyClient: function (info, callback) {
-            authorize(info.req).then(function(auth) {
-                info.req.authentication = auth;
-                callback(true);
-            }, function(e) {
-                info.req.authentication = {};
-                callback(true);
-            });
-        }
-    });
+wss = new WebSocketServer({
+    server: server,
+    verifyClient: function (info, callback) {
+        authorize(info.req).then(function(auth) {
+            info.req.authentication = auth;
+            callback(true);
+        }, function(e) {
+            info.req.authentication = {};
+            callback(true);
+        });
+    }
+});
 
 require("./world_tickers/load_all.js");
 
@@ -107,7 +117,7 @@ worldState.runWorldTicker();
 var debug = require('debug')('spodb');
 app.get('/spodb', function(req, res) {
     var hash = {},
-        list = worldState.scanDistanceFrom();
+    list = worldState.scanDistanceFrom();
     list.forEach(function(item) {
         hash[item.key] = item;
     });
@@ -126,9 +136,10 @@ app.post('/spodb/:uuid', function(req, res) {
 });
 // TODO end spodb
 //
+
 app.get('/endpoints', function(req, res) {
     res.send({
-        space: process.env.SPODB_URL,
+        "3dsim": process.env.SPODB_URL,
         auth: process.env.AUTH_URL,
         build: process.env.BUILD_URL,
         inventory: process.env.INVENTORY_URL
