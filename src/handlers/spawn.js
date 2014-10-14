@@ -151,7 +151,9 @@ var loadout_accounting = {};
 
 module.exports = {
     'spawn': function(msg, h) {
-        spawnShip(msg, h).done();
+        spawnShip(msg, h).fail(function(e) {
+            console.log(e.stack);
+        }).done();
     },
     'spawnStarter': function(msg, h) {
         if (loadout_accounting[h.auth.account]) {
