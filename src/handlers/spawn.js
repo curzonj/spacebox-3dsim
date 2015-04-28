@@ -69,10 +69,11 @@ function spawnThing(msg, h, fn) {
             fn(obj);
         }
 
-        var uuid = worldState.addObject(obj);
-        console.log("build a %s as %s", msg.blueprint, uuid);
+        return worldState.addObject(obj).then(function(uuid) {
+            console.log("build a %s as %s", msg.blueprint, uuid);
 
-        return [ uuid, blueprint ];
+            return [ uuid, blueprint ];
+        });
     }).spread(function(uuid, blueprint) {
         var obj = worldState.get(uuid);
         var transaction = [{
@@ -150,6 +151,7 @@ var loadout_accounting = {};
 module.exports = {
     'spawn': function(msg, h) {
         spawnShip(msg, h).fail(function(e) {
+            console.log(e);
             console.log(e.stack);
         }).done();
     },

@@ -8,6 +8,10 @@
 
     var deepMerge = require('./deepMerge.js');
 
+    var pgpLib = require('pg-promise');
+    var pgp = pgpLib(/*options*/);
+    var db = pgp(process.env.DATABASE_URL || process.env.SPODB_DATABASE_URL);
+
     // WorldState is a private function so it's safe
     // to declare these here.
     var listeners = [];
@@ -51,13 +55,18 @@
         },
 
         addObject: function(values) {
-            var id = uuidGen.v1();
+            var self = this,
+                id = uuidGen.v1();
 
-            this.emit('worldStatePrepareNewObject', values);
+            self.emit('worldStatePrepareNewObject', values);
 
-            this.mutateWorldState(id, 0, values);
-
-            return id;
+            return db.
+                query("insert into space_objects (id, doc) values ($1, $2)", [ id, values ]).
+                then(function() {
+                    console.log("added object", id, values);
+                    self.mutateWorldState(id, 0, values);
+                    return id;
+                });
         },
 
         // handlers call this to send us state changes

@@ -33,15 +33,15 @@
         return worldState.addObject(obj);
     }
 
-    var ship1_id = buildShip(function(s) {
+    buildShip(function(s) {
         s.position = { x: 2, y: 2, z: 2 };
-    });
-
-    var ship1 = worldState.get(ship1_id);
-    worldState.mutateWorldState(ship1.key, ship1.rev, {
-        engine: {
-            theta: Math.PI / 60,
-            thetaAxis: { x: 1, y: 1, z: 0 }
-        }
-    });
+    }).then(function(ship1_id) {
+        var ship1 = worldState.get(ship1_id);
+        worldState.mutateWorldState(ship1.key, ship1.rev, {
+            engine: {
+                theta: Math.PI / 60,
+                thetaAxis: { x: 1, y: 1, z: 0 }
+            }
+        });
+    }).done();
 })();

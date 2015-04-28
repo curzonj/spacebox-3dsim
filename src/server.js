@@ -126,8 +126,9 @@ app.get('/spodb', function(req, res) {
 });
 
 app.post('/spodb', function(req, res) {
-    var key = worldState.addObject(req.body);
-    res.send(key);
+    worldState.addObject(req.body).then(function (key) {
+        res.send(key);
+    }).done();
 });
 
 app.post('/spodb/:uuid', function(req, res) {
