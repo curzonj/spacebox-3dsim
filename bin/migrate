@@ -23,7 +23,6 @@ postgrator.migrate(process.argv[2], function (err, migrations) {
     } else { 
         console.log(migrations)
     }
-    postgrator.endConnection(function () {
-        // connection is closed, unless you are using SQL Server
-    });
+
+    process.exit(0);
 });

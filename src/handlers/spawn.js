@@ -35,10 +35,6 @@ function spawnThing(msg, h, fn) {
             throw new Error("no such blueprint: "+msg.blueprint)
         }
 
-        if (typeof msg.position != 'object') {
-            throw new Error("invalid position")
-        }
-
         if (h.auth.privileged) {
             account = msg.account || h.auth.account;
         } else {
@@ -47,8 +43,13 @@ function spawnThing(msg, h, fn) {
 
         var position = {},
             axis = ['x', 'y', 'z'];
+
         axis.forEach(function(a) {
-            position[a] = parseInt(msg.position[a]);
+            if (typeof msg.position != 'object') {
+                position[a] = 0;
+            } else {
+                position[a] = parseInt(msg.position[a]);
+            }
         });
 
         var obj = deepMerge(blueprint, {

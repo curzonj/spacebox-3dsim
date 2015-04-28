@@ -93,7 +93,6 @@ function authorize(req, restricted) {
 }
 
 var server = http.createServer(app);
-server.listen(port);
 
 var WebSocketServer = WebSockets.Server,
 wss = new WebSocketServer({
@@ -112,7 +111,6 @@ wss = new WebSocketServer({
 require("./world_tickers/load_all.js");
 
 var worldState = require('./world_state.js');
-worldState.runWorldTicker();
 
 var debug = require('debug')('spodb');
 app.get('/spodb', function(req, res) {
@@ -148,8 +146,14 @@ app.get('/endpoints', function(req, res) {
 });
 
 var Handler = require('./handler.js');
-wss.on('connection', function(ws) {
-    var handler = new Handler(ws);
-});
+
+worldState.whenIsReady().then(function() {
+    server.listen(port);
+    wss.on('connection', function(ws) {
+        var handler = new Handler(ws);
+    });
+
+    worldState.runWorldTicker();
+})
 
 console.log("server ready");
