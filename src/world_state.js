@@ -29,8 +29,16 @@
     var onReadyPromise = db.
         query("select * from space_objects where tombstone = $1", [ false ]).
         then(function(data) {
-            for (var obj in data) {
-                worldStateStorage[obj.id] = obj.doc;
+            for (var row in data) {
+                var obj = data[row];
+
+                worldStateStorage[obj.id] = {
+                    key: obj.id,
+                    rev: 0,
+                    values: obj.doc
+                };
+
+                console.log("loaded", obj);
             }
         });
 

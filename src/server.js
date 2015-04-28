@@ -154,6 +154,6 @@ worldState.whenIsReady().then(function() {
     });
 
     worldState.runWorldTicker();
+    console.log("server ready");
 })
 
-console.log("server ready");
