@@ -192,7 +192,8 @@ extend(Handler.prototype, {
        }
     },
     sanitizeState: function(values) {
-        var safeAttrs = ['type', 'position', 'velocity', 'facing', 'tombstone', 'health_pct', 'account', 'model_name', 'model_scale'];
+        // TODO I'd like health to be reported as health_pct, but I'd need access to the full object.
+        var safeAttrs = ['type', 'position', 'velocity', 'facing', 'tombstone', 'account', 'model_name', 'model_scale', 'health'];
         var safeValues = {};
 
         safeAttrs.forEach(function(name) {
