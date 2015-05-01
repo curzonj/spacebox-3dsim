@@ -70,6 +70,7 @@ function spawnThing(msg, h, fn) {
             fn(obj);
         }
 
+        // TODO what if the inventory transaction fails?
         return worldState.addObject(obj).then(function(uuid) {
             console.log("build a %s as %s", msg.blueprint, uuid);
 
@@ -77,11 +78,13 @@ function spawnThing(msg, h, fn) {
         });
     }).spread(function(uuid, blueprint) {
         var obj = worldState.get(uuid);
-        var transaction = [{
+        var transaction = msg.inventory_transaction || [];
+
+        transaction.push({
             container_action: "create",
             uuid: uuid,
             blueprint: blueprint.uuid
-        }];
+        });
 
         // TODO what happens if we fail to inform build and inventory,
         // how we converge them?
@@ -212,28 +215,16 @@ module.exports = {
         }).done();
     },
     'deploy': function(msg, h) {
-        var transaction = [{
-            inventory: msg.shipID,
-            slice: msg.slice,
+        spawnThing({
             blueprint: msg.blueprint,
-            quantity: 1
-        }, {
-            container_action: 'create',
-            uuid: uuidGen.v1(),
-            blueprint: msg.blueprint
-        }];
-
-        updateInventory(h.auth.account, transaction).then(function() {
-            return spawnThing({
+            inventory_transaction: [{
+                inventory: msg.shipID,
+                slice: msg.slice,
                 blueprint: msg.blueprint,
-                // TODO copy the position of the ship
-                position: {
-                    x: 0,
-                    y: 0,
-                    z: 0
-                }
-            }, h);
-        }).fail(function(e) {
+                quantity: -1
+            }]
+            // TODO copy the position of the ship
+        }, h).fail(function(e) {
             console.log(e.stack);
         }).done();
     },
