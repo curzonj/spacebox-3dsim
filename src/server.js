@@ -130,6 +130,7 @@ app.post('/spodb', function(req, res) {
 });
 
 app.post('/spodb/:uuid', function(req, res) {
+    // TODO if the blueprint changes, then we need to `respawn` the item
     worldState.mutateWorldState(req.param('uuid'), parseInt(req.param('rev')), req.body, true);
     res.sendStatus(204);
 });

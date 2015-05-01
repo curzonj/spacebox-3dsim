@@ -5,6 +5,7 @@
     var extend = require('extend');
     var util = require('util');
     var uuidGen = require('node-uuid');
+    var debug = require('debug')('3dsim');
 
     var deepMerge = require('./deepMerge.js');
 
@@ -38,7 +39,7 @@
                     values: obj.doc
                 };
 
-                console.log("loaded", obj);
+                debug("loaded", obj);
             }
         });
 
@@ -85,7 +86,7 @@
             return db.
                 query("insert into space_objects (id, doc) values ($1, $2)", [ id, values ]).
                 then(function() {
-                    console.log("added object", id, values);
+                    debug("added object", id, values);
                     self.mutateWorldState(id, 0, values);
                     return id;
                 });
@@ -96,7 +97,7 @@
             key = key.toString();
 
             if (debug === true) {
-                console.log(patch);
+                debug(patch);
             }
 
             // TODO this needs to sync tick time
@@ -118,7 +119,7 @@
                     key: key
                 };
 
-                console.log(data);
+                debug(data);
                 var e = new Error("revisionError expected="+expectedRev+" found="+oldRev);
                 e.data = data;
                 throw e;
