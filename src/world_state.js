@@ -93,10 +93,10 @@
         },
 
         // handlers call this to send us state changes
-        mutateWorldState: function(key, expectedRev, patch, debug) {
+        mutateWorldState: function(key, expectedRev, patch, withDebug) {
             key = key.toString();
 
-            if (debug === true) {
+            if (withDebug === true) {
                 debug(patch);
             }
 

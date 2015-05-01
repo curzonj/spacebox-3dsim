@@ -129,9 +129,19 @@ app.post('/spodb', function(req, res) {
     }).done();
 });
 
+/*
+ * completing a construction job is probably the only reason
+ * to update the spodb from outside
+ */
 app.post('/spodb/:uuid', function(req, res) {
     // TODO if the blueprint changes, then we need to `respawn` the item
-    worldState.mutateWorldState(req.param('uuid'), parseInt(req.param('rev')), req.body, true);
+    var uuid = req.param('uuid');
+    var obj = worldState.get(uuid);
+
+    // passing in the rev from the db directly means that we can clobber
+    // anything we want
+    worldState.mutateWorldState(uuid, obj.rev, req.body, true);
+
     res.sendStatus(204);
 });
 // TODO end spodb
