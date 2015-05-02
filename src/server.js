@@ -142,17 +142,6 @@ app.post('/spodb/:uuid', function(req, res) {
         res.sendStatus(204)
     }).fail(C.http.errHandler(req, res, console.log)).done()
 })
-// TODO end spodb
-//
-
-app.get('/endpoints', function(req, res) {
-    res.send({
-        "3dsim": process.env.SPODB_URL,
-        auth: process.env.AUTH_URL,
-        build: process.env.BUILD_URL,
-        inventory: process.env.INVENTORY_URL
-    })
-})
 
 var Handler = require('./handler.js')
 
