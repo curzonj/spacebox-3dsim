@@ -11,14 +11,35 @@ var EventEmitter = require('events').EventEmitter,
     Q = require('q'),
     uuidGen = require('node-uuid')
 
-C.db.select('spodb')
-Q.longStackSupport = true
-
 var keys_to_update_on = [ "blueprint", "account" ]
 
 // WorldState is a private function so it's safe
 // to declare these here.
 var listeners = []
+
+var dao = {
+    loadIterator: function(fn) {
+        return C.db.
+            query("select * from space_objects where tombstone = $1", [ false ]).
+            then(function(data) {
+                for (var row in data) {
+                    fn(data[row])
+                }
+            })
+    },
+    insert: function(key, values) {
+        return C.db.
+            query("insert into space_objects (id, system_id, doc) values ($1, $2, $3)", [ key, values.solar_system, values ])
+    },
+    update: function(key, values) {
+    
+        return C.db.query("update space_objects set doc = $2 where id = $1", [ key, values ])
+    },
+    tombstone: function(key) {
+        return C.db.query("update space_objects set tombstone = $2, tombstone_at = current_timestamp where id = $1 and tombstone = false and tombstone_at is null", [ key, true ] )
+    }
+
+}
 
 // worldStateStorage is modeled a lot like riak,
 // each object has a version and has attributes and
@@ -27,21 +48,6 @@ var listeners = []
 // listeners and storing a compelete snapshot of state
 // for bootstrapping.
 var worldStateStorage = {}
-var onReadyPromise = C.db.
-    query("select * from space_objects where tombstone = $1", [ false ]).
-    then(function(data) {
-        for (var row in data) {
-            var obj = data[row]
-
-            worldStateStorage[obj.id] = {
-                key: obj.id,
-                rev: 0,
-                values: obj.doc
-            }
-
-            debug("loaded", obj)
-        }
-    })
 
 function WorldState() {}
 
@@ -49,7 +55,18 @@ util.inherits(WorldState, EventEmitter)
 
 extend(WorldState.prototype, {
     whenIsReady: function() {
-        return onReadyPromise
+        return this.loadFromDBOnBoot()
+    },
+    loadFromDBOnBoot: function() {
+        return dao.loadIterator(function(obj) {
+            worldStateStorage[obj.id] = {
+                key: obj.id,
+                rev: 0,
+                values: obj.doc
+            }
+
+            debug("loaded", obj)
+        })
     },
 
     // TODO implement the distance limit
@@ -83,8 +100,7 @@ extend(WorldState.prototype, {
 
         self.emit('worldStatePrepareNewObject', values)
 
-        return C.db.
-            query("insert into space_objects (id, doc) values ($1, $2)", [ id, values ]).
+        return dao.insert(id, values).
             then(function() {
                 debug("added object", id, values)
                 self.mutateWorldState(id, 0, values)
@@ -130,7 +146,7 @@ extend(WorldState.prototype, {
         }
 
         if (patch.tombstone === true && old.values.tombstone !== true) {
-            C.db.query("update space_objects set tombstone = $2, tombstone_at = $3 where id = $1 and tombstone = false and tombstone_at is null", [ key, true, new Date() ] )
+            dao.tombstone(key);
         }
 
         C.deepMerge(patch, old.values)
@@ -144,7 +160,7 @@ extend(WorldState.prototype, {
 
 
         if (keys_to_update_on.some(function(i) { return patch.hasOwnProperty(i) })) {
-            return C.db.query("update space_objects set doc = $2 where id = $1", [ key, old.values ])
+            return dao.update(key, old.values)
         } else {
             return Q(null)
         }

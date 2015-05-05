@@ -10,6 +10,9 @@ var WebSockets = require("ws"),
     qhttp = require("q-io/http"),
     C = require('spacebox-common')
 
+C.db.select('spodb')
+Q.longStackSupport = true
+
 var cors = require('cors')({
     credentials: true,
     origin: function(origin, cb) {
@@ -111,17 +114,28 @@ wss = new WebSocketServer({
 
 require("./world_tickers/load_all.js")
 
-var worldState = require('./world_state.js')
+var worldState = require('./world_state.js'),
+    solarsystems = require('./solar_systems.js')
+
+app.post('/solar_systems', function(req, res) {
+    C.authorize_req(req).then(function(auth) {
+        return solarsystems.createSystem()
+    }).then(function(doc) {
+        res.send(doc)
+    }).fail(C.http.errHandler(req, res, console.log)).done()
+})
 
 var debug = require('debug')('spodb')
 app.get('/spodb', function(req, res) {
-    var hash = {},
-    list = worldState.scanDistanceFrom()
-    list.forEach(function(item) {
-        hash[item.key] = item
-    })
+    C.authorize_req(req).then(function(auth) {
+        var hash = {},
+        list = worldState.scanDistanceFrom()
+        list.forEach(function(item) {
+            hash[item.key] = item
+        })
 
-    res.send(hash)
+        res.send(hash)
+    }).fail(C.http.errHandler(req, res, console.log)).done()
 })
 
 // TODO what happens to a structure's health when it's
@@ -130,7 +144,7 @@ app.post('/spodb/:uuid', function(req, res) {
     var uuid = req.param('uuid')
     var blueprint_id = req.param('blueprint')
 
-    C.getBlueprints().then(function(blueprints) {
+    Q.spread([C.getBlueprints(), C.authorize_req(req, true)], function(blueprints, auth) {
         var blueprint = blueprints[blueprint_id]
 
         var obj = worldState.get(uuid)
@@ -145,7 +159,8 @@ app.post('/spodb/:uuid', function(req, res) {
 
 var Handler = require('./handler.js')
 
-worldState.whenIsReady().then(function() {
+Q.all([ worldState.whenIsReady(), solarsystems.whenIsReady() ]).
+then(function() {
     server.listen(port)
     wss.on('connection', function(ws) {
         var handler = new Handler(ws)

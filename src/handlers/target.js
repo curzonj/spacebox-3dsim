@@ -1,7 +1,6 @@
 'use strict';
 
-var worldState = require('../world_state.js');
-var worldAssets = require('../world_assets.js');
+var worldState = require('../world_state.js')
 
 module.exports = {
     // TODO make sure they are allowed to give commands to ship1

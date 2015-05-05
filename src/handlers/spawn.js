@@ -1,17 +1,19 @@
 'use strict';
 
-var Q = require('q')
-var qhttp = require("q-io/http")
-var uuidGen = require('node-uuid')
-var C = require('spacebox-common')
-
-Q.longStackSupport = true
+var Q = require('q'),
+    qhttp = require("q-io/http"),
+    uuidGen = require('node-uuid'),
+    npm_debug = require('debug'),
+    log = npm_debug('3dsim:info'),
+    error = npm_debug('3dsim:error'),
+    debug = npm_debug('3dsim:debug'),
+    C = require('spacebox-common')
 
 var worldState = require('../world_state.js'),
-    worldAssets = require('../world_assets.js')
+    solarsystems = require('../solar_systems.js')
 
 function spawnThing(msg, h, fn) {
-    return C.getBlueprints().then(function(blueprints) {
+    return Q.spread([C.getBlueprints(), solarsystems.getSpawnSystemId()], function(blueprints, solar_system) {
         var account, blueprint = blueprints[msg.blueprint]
 
         if (blueprint === undefined) {
@@ -24,25 +26,20 @@ function spawnThing(msg, h, fn) {
             account = h.auth.account
         }
 
-        var position = {},
-            axis = ['x', 'y', 'z']
-
-        axis.forEach(function(a) {
-            if (typeof msg.position != 'object') {
-                position[a] = 0
-            } else {
-                position[a] = parseInt(msg.position[a])
-            }
-        })
-
-        var obj = C.deepMerge(blueprint, {
+        var obj = C.deepMerge({
+            position: msg.position,
+            solar_system: msg.solar_system
+        } ,{
             blueprint: blueprint.uuid,
             account: account,
             effects: {},
-            position: position
+            position: { x: 0, y: 0, z: 0 },
+            solar_system: solar_system
         })
 
-        // This is a byproduct of the blueprint tracking itself
+        C.deepMerge(blueprint, obj);
+
+        // This is a byproduct of the blueprint's own uuid
         delete obj.uuid
 
         obj.health = obj.maxHealth
@@ -51,6 +48,8 @@ function spawnThing(msg, h, fn) {
             // TODO error handling
             fn(obj)
         }
+
+        debug(obj)
 
         // TODO what if the inventory transaction fails?
         return worldState.addObject(obj).then(function(uuid) {

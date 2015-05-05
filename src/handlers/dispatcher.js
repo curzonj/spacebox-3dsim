@@ -3,7 +3,7 @@
 // TODO some of these are restricted and need to be authenticated
 // TODO unrestricted commands still need to go the account's ships
 // TODO need a standard way to validate messages against a schema
-var handlers = [ "spawn", "target" ];
+var handlers = [ "spawn", "target", "scanning" ];
 var processors = {};
 
 handlers.forEach(function(name) {
