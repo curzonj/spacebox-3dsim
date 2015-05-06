@@ -24,11 +24,10 @@ var dao = {
     wormholes: {
         randomGeneratorFn: function(system_id) {
             return function() {
-                return C.db.query("with available_systems as (select * from system_wormholes where count < $3 and id != $1) insert into wormholes (id, outbound, inbound) select uuid_generate_v4(), $1, (select id from available_systems offset floor(random()*(select count(*) from available_systems)) limit 1) where not exists (select id from system_wormholes where id = $1 and count >= $2) returning id", [ system_id, minimum_count, maximum_count ])
+                return C.db.query("with available_systems as (select * from system_wormholes where count < $3 and id != $1 and id not in (select inbound_system from wormholes where outbound_system = $1)) insert into wormholes (id, expires_at, outbound_system, inbound_system) select uuid_generate_v4(), current_timestamp + interval '2 minutes', $1, (select id from available_systems offset floor(random()*(select count(*) from available_systems)) limit 1) where not exists (select id from system_wormholes where id = $1 and count >= $2) returning id", [ system_id, minimum_count, maximum_count ])
             }
         }
     }
-
 }
 
 var self = {
@@ -37,11 +36,9 @@ var self = {
             then(function(data) {
                 if (data.length === 0) {
                     return self.createSystem().then(function(doc) {
-                        debug(doc)
                         return doc.id
                     })
                 } else {
-                    debug(data)
                     return data[0].id
                 }
             })
@@ -54,37 +51,41 @@ var self = {
             query("insert into solar_systems (id, doc) values ($1, $2)", [ id, doc ]).
             then(function() { return doc })
     },
-    getWormholes: function(systemid) {
+    populateWormholes: function(data) {
+        debug(data)
 
+        return Q.all(data.map(function(row) {
+            var q = Q(null),
+                fn = dao.wormholes.randomGeneratorFn(row.id)
+
+            // The generator function SQL will make sure
+            // we only create the correct number of wormholes
+            for (var i=0; i < minimum_count; i++) {
+                q = q.then(fn);
+            }
+
+            return q
+        }))
+    },
+    getWormholes: function(systemid) {
+        debug(systemid)
+
+        return C.db.query("select * from system_wormholes where id = $1", [ systemid ]).
+            then(self.populateWormholes).
+            then(function() {
+                return C.db.query("select * from wormholes where inbound_system = $1 or outbound_system = $1", [ systemid ])
+            })
     },
     ensurePoolSize: function() {
-        return Q.all([
-            self.createSystem(),
-            self.createSystem(),
-            self.createSystem(),
-            self.createSystem(),
-            self.createSystem(),
-            self.createSystem()
-        ])
+        return C.db.query("select count(*) from solar_systems").
+            then(function(data) {
+                for (var i=data[0].count; i < 10; i++) {
+                    self.createSystem()
+                }
+            })
     },
     whenIsReady: function() {
-        return self.ensurePoolSize().
-            then(function() {
-                return C.db.query("select * from system_wormholes where count < $1", [ minimum_count ])
-            }).then(function(data) {
-                return data.map(function(row) {
-                    var q = Q(null),
-                        fn = dao.wormholes.randomGeneratorFn(row.id)
-
-                    // The generator function SQL will make sure
-                    // we only create the correct number of wormholes
-                    for (var i=0; i < minimum_count; i++) {
-                        q = q.then(fn);
-                    }
-
-                    return q
-                })
-            }).all()
+        return self.ensurePoolSize()
     }
 }
 

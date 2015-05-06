@@ -11,7 +11,7 @@ var EventEmitter = require('events').EventEmitter,
     Q = require('q'),
     uuidGen = require('node-uuid')
 
-var keys_to_update_on = [ "blueprint", "account" ]
+var keys_to_update_on = [ "blueprint", "account", "solar_system" ]
 
 // WorldState is a private function so it's safe
 // to declare these here.
@@ -27,9 +27,9 @@ var dao = {
                 }
             })
     },
-    insert: function(key, values) {
+    insert: function(values) {
         return C.db.
-            query("insert into space_objects (id, system_id, doc) values ($1, $2, $3)", [ key, values.solar_system, values ])
+            query("insert into space_objects (id, system_id, doc) values (uuid_generate_v1(), $1, $2) returning id", [ values.solar_system, values ])
     },
     update: function(key, values) {
     
@@ -95,13 +95,14 @@ extend(WorldState.prototype, {
     },
 
     addObject: function(values) {
-        var self = this,
-            id = uuidGen.v1()
+        var self = this
 
         self.emit('worldStatePrepareNewObject', values)
 
-        return dao.insert(id, values).
-            then(function() {
+        return dao.insert(values).
+            then(function(data) {
+                var id = data[0].id
+
                 debug("added object", id, values)
                 self.mutateWorldState(id, 0, values)
                 return id
