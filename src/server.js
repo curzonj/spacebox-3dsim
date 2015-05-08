@@ -7,11 +7,17 @@ var WebSockets = require("ws"),
     bodyParser = require('body-parser'),
     uuidGen = require('node-uuid'),
     Q = require('q'),
+    uriUtils = require('url'),
     db = require('spacebox-common-native').db,
     C = require('spacebox-common')
 
 db.select('spodb')
 Q.longStackSupport = true
+
+C.configure({
+    AUTH_URL: process.env.AUTH_URL,
+    credentials: process.env.INTERNAL_CREDS,
+})
 
 var app = express()
 var port = process.env.PORT || 5000
@@ -29,12 +35,14 @@ var WebSocketServer = WebSockets.Server,
 wss = new WebSocketServer({
     server: server,
     verifyClient: function (info, callback) {
-        C.http.authorize_req(info.req).then(function(auth) {
+        var parts = uriUtils.parse(info.req.url, true)
+        var token = parts.query.token
+
+        C.http.authorize_token(token).then(function(auth) {
             info.req.authentication = auth
             callback(true)
         }, function(e) {
-            info.req.authentication = {}
-            callback(true)
+            callback(false)
         })
     }
 })
