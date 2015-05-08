@@ -7,94 +7,21 @@ var WebSockets = require("ws"),
     bodyParser = require('body-parser'),
     uuidGen = require('node-uuid'),
     Q = require('q'),
-    qhttp = require("q-io/http"),
+    db = require('spacebox-common-native').db,
     C = require('spacebox-common')
 
-C.db.select('spodb')
+db.select('spodb')
 Q.longStackSupport = true
-
-var cors = require('cors')({
-    credentials: true,
-    origin: function(origin, cb) {
-        cb(null, true)
-    }
-})
 
 var app = express()
 var port = process.env.PORT || 5000
 
 app.use(logger('dev'))
-app.use(cors)
+C.http.cors_policy(app)
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({
     extended: false
 }))
-
-app.options("*", cors)
-
-var auth_token
-
-function getAuthToken() {
-    return Q.fcall(function() {
-        var now = new Date().getTime()
-
-        if (auth_token !== undefined && auth_token.expires > now) {
-            return auth_token.token
-        } else {
-            return qhttp.read({
-                url: process.env.AUTH_URL + '/auth?ttl=3600',
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": 'Basic ' + new Buffer(process.env.INTERNAL_CREDS).toString('base64')
-                }
-            }).then(function(b) {
-                auth_token = JSON.parse(b.toString())
-                return auth_token.token
-            })
-        }
-    })
-}
-
-function authorize(req, restricted) {
-    var auth_header = req.headers.authorization
-
-    if (auth_header === undefined) {
-        // We do this so that the Q-promise error handling
-        // will catch it
-        return Q.fcall(function() {
-            throw new Error("not authorized")
-        })
-    }
-
-    var parts = auth_header.split(' ')
-
-    // TODO make a way for internal apis to authorize
-    // as a specific account without having to get a
-    // different bearer token for each one. Perhaps
-    // auth will return a certain account if the authorized
-    // token has metadata appended to the end of it
-    // or is fernet encoded.
-    if (parts[0] != "Bearer") {
-        throw new Error("not authorized")
-    }
-
-    // This will fail if it's not authorized
-    return qhttp.read({
-        method: "POST",
-        url: process.env.AUTH_URL + '/token',
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: [JSON.stringify({
-            token: parts[1],
-            restricted: (restricted === true)
-        })]
-    }).then(function(body) {
-        return JSON.parse(body.toString())
-    }).fail(function(e) {
-        throw new Error("not authorized")
-    })
-}
 
 var server = http.createServer(app)
 
@@ -102,7 +29,7 @@ var WebSocketServer = WebSockets.Server,
 wss = new WebSocketServer({
     server: server,
     verifyClient: function (info, callback) {
-        authorize(info.req).then(function(auth) {
+        C.http.authorize_req(info.req).then(function(auth) {
             info.req.authentication = auth
             callback(true)
         }, function(e) {
@@ -118,7 +45,7 @@ var worldState = require('./world_state.js'),
     solarsystems = require('./solar_systems.js')
 
 app.post('/solar_systems', function(req, res) {
-    C.authorize_req(req).then(function(auth) {
+    C.http.authorize_req(req).then(function(auth) {
         return solarsystems.createSystem()
     }).then(function(doc) {
         res.send(doc)
@@ -127,7 +54,7 @@ app.post('/solar_systems', function(req, res) {
 
 var debug = require('debug')('spodb')
 app.get('/spodb', function(req, res) {
-    C.authorize_req(req).then(function(auth) {
+    C.http.authorize_req(req).then(function(auth) {
         var hash = {},
         list = worldState.scanDistanceFrom()
         list.forEach(function(item) {
@@ -144,7 +71,7 @@ app.post('/spodb/:uuid', function(req, res) {
     var uuid = req.param('uuid')
     var blueprint_id = req.param('blueprint')
 
-    Q.spread([C.getBlueprints(), C.authorize_req(req, true)], function(blueprints, auth) {
+    Q.spread([C.getBlueprints(), C.http.authorize_req(req, true)], function(blueprints, auth) {
         var blueprint = blueprints[blueprint_id]
 
         var obj = worldState.get(uuid)

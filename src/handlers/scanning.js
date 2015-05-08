@@ -1,7 +1,6 @@
 'use strict';
 
 var Q = require('q'),
-    qhttp = require("q-io/http"),
     uuidGen = require('node-uuid'),
     npm_debug = require('debug'),
     log = npm_debug('3dsim:info'),

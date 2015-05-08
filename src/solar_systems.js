@@ -9,6 +9,7 @@ var EventEmitter = require('events').EventEmitter,
     debug = npm_debug('3dsim:debug'),
     C = require('spacebox-common'),
     Q = require('q'),
+    db = require('spacebox-common-native').db,
     uuidGen = require('node-uuid')
 
 var minimum_count = 4,
@@ -17,14 +18,14 @@ var minimum_count = 4,
 var dao = {
     systems: {
         insert: function(id, doc) {
-            return C.db.
+            return db.
                 query("insert into solar_systems (id, doc) values ($1, $2)", [ id, doc ])
         }
     },
     wormholes: {
         randomGeneratorFn: function(system_id) {
             return function() {
-                return C.db.query("with available_systems as (select * from system_wormholes where count < $3 and id != $1 and id not in (select inbound_system from wormholes where outbound_system = $1)) insert into wormholes (id, expires_at, outbound_system, inbound_system) select uuid_generate_v4(), current_timestamp + interval '2 minutes', $1, (select id from available_systems offset floor(random()*(select count(*) from available_systems)) limit 1) where not exists (select id from system_wormholes where id = $1 and count >= $2) returning id", [ system_id, minimum_count, maximum_count ])
+                return db.query("with available_systems as (select * from system_wormholes where count < $3 and id != $1 and id not in (select inbound_system from wormholes where outbound_system = $1)) insert into wormholes (id, expires_at, outbound_system, inbound_system) select uuid_generate_v4(), current_timestamp + interval '2 minutes', $1, (select id from available_systems offset floor(random()*(select count(*) from available_systems)) limit 1) where not exists (select id from system_wormholes where id = $1 and count >= $2) returning id", [ system_id, minimum_count, maximum_count ])
             }
         }
     }
@@ -32,7 +33,7 @@ var dao = {
 
 var self = {
     getSpawnSystemId: function() {
-        return C.db.query("select * from solar_systems limit 1").
+        return db.query("select * from solar_systems limit 1").
             then(function(data) {
                 if (data.length === 0) {
                     return self.createSystem().then(function(doc) {
@@ -47,7 +48,7 @@ var self = {
         var id = uuidGen.v4(),
             doc = { uuid: id }
 
-        return C.db.
+        return db.
             query("insert into solar_systems (id, doc) values ($1, $2)", [ id, doc ]).
             then(function() { return doc })
     },
@@ -70,14 +71,14 @@ var self = {
     getWormholes: function(systemid) {
         debug(systemid)
 
-        return C.db.query("select * from system_wormholes where id = $1", [ systemid ]).
+        return db.query("select * from system_wormholes where id = $1", [ systemid ]).
             then(self.populateWormholes).
             then(function() {
-                return C.db.query("select * from wormholes where inbound_system = $1 or outbound_system = $1", [ systemid ])
+                return db.query("select * from wormholes where inbound_system = $1 or outbound_system = $1", [ systemid ])
             })
     },
     ensurePoolSize: function() {
-        return C.db.query("select count(*) from solar_systems").
+        return db.query("select count(*) from solar_systems").
             then(function(data) {
                 for (var i=data[0].count; i < 10; i++) {
                     self.createSystem()

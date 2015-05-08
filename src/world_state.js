@@ -8,6 +8,7 @@ var EventEmitter = require('events').EventEmitter,
     error = npm_debug('3dsim:error'),
     debug = npm_debug('3dsim:debug'),
     C = require('spacebox-common'),
+    db = require('spacebox-common-native').db,
     Q = require('q'),
     uuidGen = require('node-uuid')
 
@@ -19,7 +20,7 @@ var listeners = []
 
 var dao = {
     loadIterator: function(fn) {
-        return C.db.
+        return db.
             query("select * from space_objects where tombstone = $1", [ false ]).
             then(function(data) {
                 for (var row in data) {
@@ -28,15 +29,15 @@ var dao = {
             })
     },
     insert: function(values) {
-        return C.db.
+        return db.
             query("insert into space_objects (id, system_id, doc) values (uuid_generate_v1(), $1, $2) returning id", [ values.solar_system, values ])
     },
     update: function(key, values) {
     
-        return C.db.query("update space_objects set doc = $2 where id = $1", [ key, values ])
+        return db.query("update space_objects set doc = $2 where id = $1", [ key, values ])
     },
     tombstone: function(key) {
-        return C.db.query("update space_objects set tombstone = $2, tombstone_at = current_timestamp where id = $1 and tombstone = false and tombstone_at is null", [ key, true ] )
+        return db.query("update space_objects set tombstone = $2, tombstone_at = current_timestamp where id = $1 and tombstone = false and tombstone_at is null", [ key, true ] )
     }
 
 }
