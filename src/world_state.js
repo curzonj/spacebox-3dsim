@@ -110,7 +110,6 @@ extend(WorldState.prototype, {
             })
     },
 
-    // handlers call this to send us state changes
     mutateWorldState: function(key, expectedRev, patch, withDebug) {
         key = key.toString()
 
@@ -188,10 +187,6 @@ extend(WorldState.prototype, {
         return tickNumber
     },
 
-    // NOTE this ticks everything that isn't
-    // controled by external logic, those are
-    // ticked by the handlers. This is the
-    // traditional NPCs.
     worldTick: function() {
         // TODO the tickNumber should be synced with
         // worldstate mutations

@@ -5,12 +5,11 @@ var EventEmitter = require('events').EventEmitter,
     util = require('util'),
     WebSocket = require('ws'),
     worldState = require('./world_state.js'),
-    multiuser = require('./multiuser.js'),
-    dispatcher = require('./handlers/dispatcher.js'),
+    dispatcher = require('./commands/dispatcher.js'),
     Q = require('q'),
     C = require('spacebox-common')
 
-var Handler = module.exports = function(ws) {
+var WSController = module.exports = function(ws) {
     this.ws = ws
     this.visibilityKeys = []
     this.privilegedKeys = []
@@ -30,10 +29,10 @@ var Handler = module.exports = function(ws) {
     }).then(self.onConnectionOpen.bind(self))
 }
 
-util.inherits(Handler, EventEmitter)
+util.inherits(WSController, EventEmitter)
 
-extend(Handler.prototype, {
-    constructor: Handler,
+extend(WSController.prototype, {
+    constructor: WSController,
     setupConnectionCallbacks: function() {
         this.ws.on('message', this.onWSMessageReceived.bind(this))
         this.ws.on('close', this.onConnectionClosed.bind(this))
@@ -62,9 +61,6 @@ extend(Handler.prototype, {
         this.sendWorldState()
 
         this.send({type:'connectionReady'})
-    
-        // This is not really true
-        multiuser.onClientJoined(this)
     },
     onConnectionClosed: function() {
         worldState.removeListener(this)
@@ -72,15 +68,32 @@ extend(Handler.prototype, {
         console.log('disconnected')
     },
     onWSMessageReceived: function(message) {
+        var request_id
+
         try {
             if (this.auth.account !== undefined) {
-                dispatcher.dispatch(JSON.parse(message), this)
+                var parsed = JSON.parse(message)
+                request_id = parsed.request_id
+
+                dispatcher.dispatch(parsed, this)
             } else {
                 console.log("ignoring command on unauthenticated socket")
             }
         } catch(e) {
-            // TODO send an error back to the client
             console.log('error handling command', e, e.stack)
+
+            var details
+
+            if (e.stack !== undefined) {
+                details = e.stack.toString()
+            }
+
+            this.send({
+                type: 'error',
+                request_id: request_id,
+                message: e.toString(),
+                details: details
+            })
         }
     },
     sendState: function(ts, key, values) {

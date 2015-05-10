@@ -34,8 +34,7 @@ module.exports = {
             
             }
         } else {
-            console.log("invalid command: "+cmd);
-            return ;
+            throw("invalid command: "+cmd);
         }
     }
 };

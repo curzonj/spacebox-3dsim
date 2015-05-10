@@ -92,13 +92,13 @@ app.post('/spodb/:uuid', function(req, res) {
     }).fail(C.http.errHandler(req, res, console.log)).done()
 })
 
-var Handler = require('./handler.js')
+var Controller = require('./ws_controller.js')
 
 Q.all([ worldState.whenIsReady(), solarsystems.whenIsReady() ]).
 then(function() {
     server.listen(port)
     wss.on('connection', function(ws) {
-        var handler = new Handler(ws)
+        new Controller(ws)
     })
 
     worldState.runWorldTicker()

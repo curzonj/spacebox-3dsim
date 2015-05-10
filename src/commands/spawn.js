@@ -134,10 +134,7 @@ var loadout_accounting = {}
 
 module.exports = {
     'spawn': function(msg, h) {
-        spawnShip(msg, h).fail(function(e) {
-            console.log(e)
-            console.log(e.stack)
-        }).done()
+        spawnShip(msg, h).done()
     },
     'spawnStarter': function(msg, h) {
         if (loadout_accounting[h.auth.account]) {
@@ -169,8 +166,6 @@ module.exports = {
                 // FIXME This could fail in soooo many partial ways
                 loadout_accounting[h.auth.account] = true
             })
-        }).fail(function(e) {
-            console.log(e.stack)
         }).done()
     },
     'undock': function(msg, h) {
@@ -190,8 +185,6 @@ module.exports = {
                     z: 1
                 }
             }, h)
-        }).fail(function(e) {
-            console.log(e.stack)
         }).done()
     },
     'deploy': function(msg, h) {
@@ -204,13 +197,9 @@ module.exports = {
                 quantity: -1
             }]
             // TODO copy the position of the ship
-        }, h).fail(function(e) {
-            console.log(e.stack)
         }).done()
     },
     'spawnStructure': function(msg, h) {
-        spawnThing(msg, h).fail(function(e) {
-            console.log(e.stack)
-        }).done()
+        spawnThing(msg, h).done()
     }
 }
