@@ -27,12 +27,7 @@ module.exports = {
         console.log(msg);
 
         if (processors.hasOwnProperty(cmd) && typeof processors[cmd] == 'function') {
-            try {
-                processors[cmd](msg, info);
-            } catch(e) {
-                console.log('command failed', cmd, msg, e);
-            
-            }
+            processors[cmd](msg, info);
         } else {
             throw("invalid command: "+cmd);
         }

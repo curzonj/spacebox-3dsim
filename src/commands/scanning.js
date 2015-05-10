@@ -6,6 +6,7 @@ var Q = require('q'),
     log = npm_debug('3dsim:info'),
     error = npm_debug('3dsim:error'),
     debug = npm_debug('3dsim:debug'),
+    db = require('spacebox-common-native').db,
     C = require('spacebox-common')
 
 var worldState = require('../world_state.js'),
@@ -13,6 +14,12 @@ var worldState = require('../world_state.js'),
 
 module.exports = {
     'jumpWormhole': function(msg, h) {
+        if (msg.shipID === undefined) {
+            throw "you must provide a `shipID` parameter"
+        } else if (msg.wormhole === undefined) {
+            throw "you must provide a `wormhole` parameter"
+        }
+
         var ship = worldState.get(msg.shipID)
         var wormhole = worldState.get(msg.wormhole)
 
@@ -27,7 +34,7 @@ module.exports = {
 
         debug(wormhole)
 
-        C.db.query("select * from wormholes where id = $1", [ wormhole.values.wormhole_id ]).
+        db.query("select * from wormholes where id = $1", [ wormhole.values.wormhole_id ]).
             then(function(data) {
                 debug(data)
                 var destination_id, row = data[0],
@@ -48,7 +55,7 @@ module.exports = {
                         debug([row.id, spo_id])
                         destination_id = spo_id
 
-                        return C.db.query("update wormholes set inbound_id = $2 where id = $1", [ row.id, spo_id ])
+                        return db.query("update wormholes set inbound_id = $2 where id = $1", [ row.id, spo_id ])
                     })
                 } else {
                     destination_id = row.outbound_id
@@ -72,7 +79,16 @@ module.exports = {
     },
     'scanWormholes': function(msg, h) {
         var shipId = msg.shipID
+
+        if (shipId === undefined) {
+            throw "you must provide a `shipID` parameter"
+        }
+
         var ship = worldState.get(shipId)
+        if (ship === undefined) {
+            throw "invalid shipID"
+        }
+
         var systemId = ship.values.solar_system
 
         solarsystems.getWormholes(systemId).then(function(data) {
@@ -101,8 +117,7 @@ module.exports = {
                         direction: direction,
                         expires_at: row.expires_at
                     }).then(function(spo_id) {
-                        debug([row.id, spo_id])
-                        return C.db.query("update wormholes set "+direction+"_id = $2 where id = $1", [ row.id, spo_id ])
+                        return db.query("update wormholes set "+direction+"_id = $2 where id = $1", [ row.id, spo_id ])
                     })
                 } 
             }))

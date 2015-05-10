@@ -137,9 +137,9 @@ module.exports = {
         spawnShip(msg, h).done()
     },
     'spawnStarter': function(msg, h) {
+        // TODO actually check the world db if a starter ship exists
         if (loadout_accounting[h.auth.account]) {
-            // TODO error handling
-            return
+            throw "this account already has a starter ship"
         }
 
         spawnShip({

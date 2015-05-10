@@ -1,24 +1,25 @@
 CREATE EXTENSION "uuid-ossp";
 
-CREATE TABLE space_objects (
-    id uuid PRIMARY KEY,
-    system_id uuid not null,
-    tombstone boolean not null default false,
-    tombstone_at timestamp,
-    doc json not null
-);
-
 CREATE TABLE solar_systems (
     id uuid PRIMARY KEY,
     doc json not null
 );
 
+CREATE TABLE space_objects (
+    id uuid PRIMARY KEY,
+    account_id uuid,
+    system_id uuid not null REFERENCES solar_systems (id),
+    tombstone boolean not null default false,
+    tombstone_at timestamp,
+    doc json not null
+);
+
 CREATE TABLE wormholes (
     id uuid PRIMARY KEY,
-    outbound_system uuid not null,
-    outbound_id uuid,
-    inbound_system uuid not null,
-    inbound_id uuid,
+    outbound_system uuid not null REFERENCES solar_systems (id),
+    outbound_id uuid REFERENCES space_objects (id),
+    inbound_system uuid not null REFERENCES solar_systems (id),
+    inbound_id uuid REFERENCES space_objects (id),
     expires_at timestamp not null
 );
 

@@ -92,7 +92,7 @@ app.post('/spodb/:uuid', function(req, res) {
     }).fail(C.http.errHandler(req, res, console.log)).done()
 })
 
-var Controller = require('./ws_controller.js')
+var Controller = require('./controller/ws.js')
 
 Q.all([ worldState.whenIsReady(), solarsystems.whenIsReady() ]).
 then(function() {

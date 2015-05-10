@@ -4,17 +4,16 @@ var EventEmitter = require('events').EventEmitter,
     extend = require('extend'),
     util = require('util'),
     WebSocket = require('ws'),
-    worldState = require('./world_state.js'),
-    dispatcher = require('./commands/dispatcher.js'),
+    worldState = require('../world_state.js'),
+    dispatcher = require('../commands/dispatcher.js'),
+    Visibility = require('./visibility.js'),
     Q = require('q'),
     C = require('spacebox-common')
 
 var WSController = module.exports = function(ws) {
     this.ws = ws
-    this.visibilityKeys = []
-    this.privilegedKeys = []
-
     this.auth = ws.upgradeReq.authentication
+    this.visibility = new Visibility(this.auth)
 
     var self = this
     Q.fcall(function() {
@@ -26,7 +25,7 @@ var WSController = module.exports = function(ws) {
                 })
             })
         }
-    }).then(self.onConnectionOpen.bind(self))
+    }).then(self.onConnectionOpen.bind(self)).done()
 }
 
 util.inherits(WSController, EventEmitter)
@@ -57,10 +56,13 @@ extend(WSController.prototype, {
         // We listen for updates so that we don't
         // miss any updates while we fetch the
         // full state.
+        // TODO updates need to be queued so they
+        // are only sent after the full state is sent
         worldState.addListener(this)
-        this.sendWorldState()
 
-        this.send({type:'connectionReady'})
+        this.sendWorldState().then(function() {
+            this.send({type:'connectionReady'})
+        }.bind(this)).done()
     },
     onConnectionClosed: function() {
         worldState.removeListener(this)
@@ -96,28 +98,16 @@ extend(WSController.prototype, {
             })
         }
     },
-    sendState: function(ts, key, values) {
-        var i = this.visibilityKeys.indexOf(key)
+    sendState: function(ts, key, patch) {
+        var values = this.visibility.rewriteProperties(key, patch)
 
-        if (!this.checkVisibility(key, values.tombstone))
+        if (values.length === 0)
             return
-
-        var safeValues
-        if (this.checkPrivilege(key, values)) {
-            safeValues = values
-        } else {
-            safeValues = this.sanitizeState(values)
-        }
-
-        // TODO don't send the message if the safeValues are empty
 
         this.send({
             type: "state",
             timestamp: ts,
-            state: {
-                key: key,
-                values: safeValues
-            }
+            state: values
         })
     },
     send: function(obj) {
@@ -127,75 +117,13 @@ extend(WSController.prototype, {
             console.log("failed to send message, websocket closed or closing")
         }
     },
-    checkVisibility: function(key, tombstone) {
-        // it's an optimization to only look this up once
-        var i = this.visibilityKeys.indexOf(key)
-
-        if (tombstone) {
-            if (i > -1) {
-                this.visibilityKeys.splice(i, 1)
-                return true
-            } else {
-                return false
-            }
-        } else {
-            if (i == -1) {
-                this.visibilityKeys.push(key)
-            }
-
-            // show everybody everything for now
-            return true
-        }
-    },
-    checkPrivilege: function(key, values) {
-        if (this.auth.privileged) return true
-
-        var i = this.privilegedKeys.indexOf(key)
-
-        if (values.tombstone) {
-            if (i > -1) {
-                this.privilegedKeys.splice(i, 1)
-            }
-        }
-
-       if (i > -1) {
-           return true
-       } else if (values.account !== undefined && values.account == this.auth.account) {
-           this.privilegedKeys.push(key)
-       } else {
-           return false
-       }
-    },
-    sanitizeState: function(values) {
-        // TODO I'd like health to be reported as health_pct, but I'd need access to the full object.
-        var safeAttrs = ['type', 'position', 'velocity', 'facing', 'tombstone', 'account', 'model_name', 'model_scale', 'health']
-        var safeValues = {}
-
-        safeAttrs.forEach(function(name) {
-            if (values.hasOwnProperty(name)) {
-                safeValues[name] = values[name]
-            }
-        }, this)
-
-        // We map effects into the root namespace for simplicity
-        // on the clientside
-        if (values.hasOwnProperty("effects")) {
-            Object.keys(values.effects).forEach(function(n) {
-                safeValues[n] = values.effects[n]
-            })
-        }
-
-        this.emit('sanitizeClientValues', values, safeValues)
-
-        return safeValues
-    },
     sendWorldState: function() {
         // TODO the worldstate itself should have a better sense of time
         var ts = worldState.currentTick()
 
-        worldState.scanDistanceFrom(undefined).forEach(function(obj) {
-            this.sendState(ts, obj.key, obj.values)
-        }, this)
+        return this.visibility.loadInitialWorldState(function(key) {
+            this.sendState(ts, key, {})
+        }.bind(this))
     },
     onWorldStateChange: function(ts, key, oldRev, newRev, patch) {
         this.sendState(ts, key, patch)

@@ -30,11 +30,11 @@ var dao = {
     },
     insert: function(values) {
         return db.
-            query("insert into space_objects (id, system_id, doc) values (uuid_generate_v1(), $1, $2) returning id", [ values.solar_system, values ])
+            query("insert into space_objects (id, system_id, account_id, doc) values (uuid_generate_v1(), $1, $2, $3) returning id", [ values.solar_system, values.account, values ])
     },
     update: function(key, values) {
     
-        return db.query("update space_objects set doc = $2 where id = $1", [ key, values ])
+        return db.query("update space_objects set doc = $2, system_id = $3 where id = $1", [ key, values, values.solar_system ])
     },
     tombstone: function(key) {
         return db.query("update space_objects set tombstone = $2, tombstone_at = current_timestamp where id = $1 and tombstone = false and tombstone_at is null", [ key, true ] )
@@ -70,17 +70,40 @@ extend(WorldState.prototype, {
         })
     },
 
+    getAccountObjects: function(account) {
+        return db.query("select * from space_objects where account_id = $1", [ account ]).
+            then(function(data) {
+                return data.map(function(row) {
+                    // Almost like the in memory version but without the rev.
+                    // someday all of this will have to be consolidated
+                    return {
+                        key: row.id,
+                        values: row.doc
+                    }
+                })
+            })
+    },
+
     // TODO implement the distance limit
-    scanKeysDistanceFrom: function(coords) {
-        return Object.keys(worldStateStorage)
+    scanKeysDistanceFrom: function(obj) {
+        if (obj === undefined) {
+            return Object.keys(worldStateStorage)
+        } else {
+            // This is easy but it won't handle when we add missiles and stuff
+            // that never get added to the database. this also violates the return
+            // signature of the previous if clause
+            return db.query("select id, account_id from space_objects where system_id = $1", [ obj.solar_system ]).then(function(data) {
+                return data.map(function(row) { return row.id })
+            })
+        }
     },
 
     getHack: function() {
         return worldStateStorage
     },
 
-    scanDistanceFrom: function(coords, type) {
-        var list = this.scanKeysDistanceFrom(coords).map(function(k) {
+    scanDistanceFrom: function(_, type) {
+        var list = this.scanKeysDistanceFrom(undefined).map(function(k) {
             return this.get(k)
         }, this)
 
@@ -155,7 +178,11 @@ extend(WorldState.prototype, {
         // broadcast the change to all the listeners
         listeners.forEach(function(h) {
             if (h.onWorldStateChange !== undefined) {
-                h.onWorldStateChange(ts, key, oldRev, newRev, patch)
+                try {
+                    h.onWorldStateChange(ts, key, oldRev, newRev, patch)
+                } catch(e) {
+                    console.log("onWorldStateChange failed", h, e, e.stack)
+                }
             }
         })
 
