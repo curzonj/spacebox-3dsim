@@ -6,6 +6,7 @@ var Q = require('q'),
     log = npm_debug('3dsim:info'),
     error = npm_debug('3dsim:error'),
     debug = npm_debug('3dsim:debug'),
+    db = require('spacebox-common-native').db,
     C = require('spacebox-common')
 
 var worldState = require('../world_state.js'),
@@ -134,43 +135,41 @@ var loadout_accounting = {}
 
 module.exports = {
     'spawn': function(msg, h) {
-        spawnShip(msg, h).done()
+        return spawnShip(msg, h)
     },
     'spawnStarter': function(msg, h) {
-        // TODO actually check the world db if a starter ship exists
-        if (loadout_accounting[h.auth.account]) {
-            throw "this account already has a starter ship"
-        }
+        return db.query("select count(*)::int from space_objects where account_id = $1 and doc::json->>'blueprint' = $2", [ h.auth.account, loadout.blueprint ]).
+            then(function(data) {
+                if (data[0].count > 0)
+                    throw "this account already has a starter ship"
 
-        spawnShip({
-            blueprint: loadout.blueprint,
-            // TODO copy the position of the spawnpoint
-            position: {
-                x: 1,
-                y: 1,
-                z: 1
-            }
-        }, h).then(function(uuid) {
-            var list = []
+                return spawnShip({
+                    blueprint: loadout.blueprint,
+                    // TODO copy the position of the spawnpoint
+                    position: {
+                        x: 1,
+                        y: 1,
+                        z: 1
+                    }
+                }, h)
+            }).then(function(uuid) {
+                var list = []
 
-            for (var type in loadout.contents) {
-                list.push({
-                    inventory: uuid,
-                    slice: "default",
-                    blueprint: type,
-                    quantity: loadout.contents[type]
-                })
-            }
+                for (var type in loadout.contents) {
+                    list.push({
+                        inventory: uuid,
+                        slice: "default",
+                        blueprint: type,
+                        quantity: loadout.contents[type]
+                    })
+                }
 
-            return updateInventory(h.auth.account, list).then(function() {
-                // FIXME This could fail in soooo many partial ways
-                loadout_accounting[h.auth.account] = true
+                return updateInventory(h.auth.account, list)
             })
-        }).done()
     },
     'undock': function(msg, h) {
         console.log("got the message")
-        C.request('inventory', 'POST', 200, '/ships/'+msg.ship_uuid, {
+        return C.request('inventory', 'POST', 200, '/ships/'+msg.ship_uuid, {
             in_space: true
         }, {
             sudo_account: h.auth.account
@@ -185,10 +184,10 @@ module.exports = {
                     z: 1
                 }
             }, h)
-        }).done()
+        })
     },
     'deploy': function(msg, h) {
-        spawnThing({
+        return spawnThing({
             blueprint: msg.blueprint,
             inventory_transaction: [{
                 inventory: msg.shipID,
@@ -197,9 +196,9 @@ module.exports = {
                 quantity: -1
             }]
             // TODO copy the position of the ship
-        }).done()
+        })
     },
     'spawnStructure': function(msg, h) {
-        spawnThing(msg, h).done()
+        return spawnThing(msg, h)
     }
 }

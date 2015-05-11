@@ -120,6 +120,9 @@ extend(Class.prototype, {
             delete this.visiblePoints[key]
         }
 
+
+        debug("visiblePoints", this.visiblePoints)
+
         return {
             before: before,
             currently: currently,
@@ -132,6 +135,8 @@ extend(Class.prototype, {
             point = this.scanPoints[key] = this.scanPoints[key] || {},
             oldSystem = point.solar_system
 
+        debug('old scanpoint', point)
+
         C.deepMerge({
             position: patch.position,
             solar_system: patch.solar_system
@@ -139,12 +144,13 @@ extend(Class.prototype, {
 
         if (patch.solar_system) {
             if (oldSystem !== undefined) {
-                var oldList = this.visibleSystems[oldSystem] || []
-                var i = oldList.indexOf(key)
-                if (i > -1) // this is just to be safe
-                    oldList.splice(i, 1)
+                var oldList = this.visibleSystems[oldSystem]
+                debug('spos in old system', oldList)
+                oldList.splice(oldList.indexOf(key), 1)
+
                 if (oldList.length === 0) {
                     delete this.visibleSystems[oldSystem]
+                    debug('testing', this.visiblePoints, 'against', this.visibleSystems)
 
                     for (var v in this.visiblePoints) {
                         if(key !== v && !this.visibilityTest(this.visiblePoints[v])) {
@@ -157,6 +163,8 @@ extend(Class.prototype, {
                         }
                     }
                 }
+
+                debug('changes', changes)
             }
 
             var list = this.visibleSystems[patch.solar_system]
@@ -167,6 +175,11 @@ extend(Class.prototype, {
                 // point because that'll hit the db and be async
                 worldState.scanDistanceFrom(undefined).forEach(function(obj) {
                     if(key != obj.key && this.visibilityTest(obj.values)) {
+                        this.visiblePoints[obj.key] = {
+                            solar_system: obj.values.solar_system,
+                            position: obj.values.position,
+                        }
+
                         changes.push({
                             key: obj.key,
                             values: this.filterProperties(obj.key, obj.values)

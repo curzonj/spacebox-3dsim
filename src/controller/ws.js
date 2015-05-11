@@ -70,32 +70,15 @@ extend(WSController.prototype, {
         console.log('disconnected')
     },
     onWSMessageReceived: function(message) {
-        var request_id
-
         try {
             if (this.auth.account !== undefined) {
                 var parsed = JSON.parse(message)
-                request_id = parsed.request_id
-
                 dispatcher.dispatch(parsed, this)
             } else {
                 console.log("ignoring command on unauthenticated socket")
             }
         } catch(e) {
             console.log('error handling command', e, e.stack)
-
-            var details
-
-            if (e.stack !== undefined) {
-                details = e.stack.toString()
-            }
-
-            this.send({
-                type: 'error',
-                request_id: request_id,
-                message: e.toString(),
-                details: details
-            })
         }
     },
     sendState: function(ts, key, patch) {

@@ -52,14 +52,6 @@ require("./world_tickers/load_all.js")
 var worldState = require('./world_state.js'),
     solarsystems = require('./solar_systems.js')
 
-app.post('/solar_systems', function(req, res) {
-    C.http.authorize_req(req).then(function(auth) {
-        return solarsystems.createSystem()
-    }).then(function(doc) {
-        res.send(doc)
-    }).fail(C.http.errHandler(req, res, console.log)).done()
-})
-
 var debug = require('debug')('spodb')
 app.get('/spodb', function(req, res) {
     C.http.authorize_req(req).then(function(auth) {
