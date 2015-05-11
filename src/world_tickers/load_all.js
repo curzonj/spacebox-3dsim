@@ -1,9 +1,5 @@
-(function() {
-    'use strict';
+'use strict';
 
-//    require("./npc.js");
-    require("./shooting.js");
-    require("./engines.js");
-
-    module.exports = {};
-})();
+//    require("./npc.js")
+require("./shooting.js")
+require("./engines.js")

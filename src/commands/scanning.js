@@ -25,17 +25,20 @@ module.exports = {
 
         var systemId = ship.values.solar_system
         if (wormhole.values.solar_system !== systemId) {
-            log("requested wormhole is in the wrong system")
-            return
+            throw("requested wormhole is in the wrong system")
         } else if (wormhole.values.type !== 'wormhole') {
-            log("worldstate really needs a type system")
-            return
+            throw("that's not a wormhole")
+        } else if (wormhole.values.tombstone === true) {
+            throw("that wormhole has collapsed")
         }
 
         debug(wormhole)
 
-        db.query("select * from wormholes where id = $1", [ wormhole.values.wormhole_id ]).
+        return db.query("select * from wormholes where id = $1 and expires_at > current_timestamp", [ wormhole.values.wormhole_id ]).
             then(function(data) {
+                if (data.length === 0)
+                    throw("that wormhole has collapsed")
+                
                 debug(data)
                 var destination_id, row = data[0],
                     direction = wormhole.values.direction,
@@ -69,13 +72,7 @@ module.exports = {
                         position: destination_spo.values.position,
                     })
                 })
-
-                // TODO we need to get the spo in the destination system
-                // and if it doesn't exist we spawn it
-
-            }).fail(function(e) {
-                console.log(e.stack)
-            }).done()
+            })
     },
     'scanWormholes': function(msg, h) {
         var shipId = msg.shipID
@@ -91,7 +88,7 @@ module.exports = {
 
         var systemId = ship.values.solar_system
 
-        solarsystems.getWormholes(systemId).then(function(data) {
+        return solarsystems.getWormholes(systemId).then(function(data) {
             debug(data)
 
             return Q.all(data.map(function(row) {
@@ -121,8 +118,6 @@ module.exports = {
                     })
                 } 
             }))
-        }).fail(function(e) {
-            console.log(e.stack)
-        }).done()
+        })
     }
 }

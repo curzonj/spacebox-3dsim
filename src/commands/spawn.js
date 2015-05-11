@@ -69,9 +69,13 @@ function spawnThing(msg, h, fn) {
 
         // TODO what happens if we fail to inform build and inventory,
         // how we converge them?
-        return updateInventory(h.auth.account, transaction).then(function() {
+        return C.updateInventory(h.auth.account, transaction).then(function() {
             if (blueprint.production !== undefined) {
-                return updateFacility(uuid, blueprint.uuid, h.auth.account)
+                return C.request('build', 'POST', 201, '/facilities/'+uuid, {
+                    blueprint: blueprint.uuid
+                }, {
+                    sudo_account: h.auth.account
+                })
             }
         }).then(function() {
             return uuid
@@ -106,19 +110,6 @@ function spawnShip(msg, h) {
     })
 }
 
-function updateInventory(account, data) {
-    /* data = [{
-        inventory: uuid,
-        slice: slice,
-        blueprint: type,
-        quantity: quantity
-    }]
-    */
-    return C.request('inventory', 'POST', 204, '/inventory', data, {
-        sudo_account: account
-    })
-}
-
 function updateFacility(uuid, blueprint, account) {
     return C.request('build', 'POST', 201, '/facilities/'+uuid, {
         blueprint: blueprint
@@ -131,7 +122,6 @@ var loadout = {
         "f9e7e6b4-d5dc-4136-a445-d3adffc23bc6": 35
     }
 }
-var loadout_accounting = {}
 
 module.exports = {
     'spawn': function(msg, h) {
@@ -164,7 +154,7 @@ module.exports = {
                     })
                 }
 
-                return updateInventory(h.auth.account, list)
+                return C.updateInventory(h.auth.account, list)
             })
     },
     'undock': function(msg, h) {

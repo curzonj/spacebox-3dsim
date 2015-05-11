@@ -25,4 +25,4 @@ CREATE TABLE wormholes (
 
 CREATE UNIQUE INDEX unique_system_pairs ON wormholes (outbound_system, inbound_system);
 
-CREATE VIEW system_wormholes AS select solar_systems.id, count(wormholes.id)::int from solar_systems left join wormholes on (solar_systems.id = wormholes.outbound_system OR solar_systems.id = wormholes.inbound_system) group by solar_systems.id;
+CREATE VIEW system_wormholes AS select solar_systems.id, count(wormholes.id)::int from solar_systems left join wormholes on ((solar_systems.id = wormholes.outbound_system OR solar_systems.id = wormholes.inbound_system) and wormholes.expires_at > current_timestamp) group by solar_systems.id;

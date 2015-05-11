@@ -106,7 +106,13 @@ extend(Class.prototype, {
             // that we can't see. But we also don't want every controller
             // to keep a list of every key in the game that they can't see
             obj = worldState.get(key)
-            currently = privileged || this.visibilityTest(obj.values)
+
+            if (obj === undefined) {
+                error("missing key during checkVisibility", key, patch)
+                currently = false
+            } else {
+                currently = privileged || this.visibilityTest(obj.values)
+            }
         }
 
         if (!before && currently) {
