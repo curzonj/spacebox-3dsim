@@ -59,24 +59,20 @@ function spawnThing(msg, h, fn) {
         })
     }).spread(function(uuid, blueprint) {
         var obj = worldState.get(uuid)
-        var transaction = msg.inventory_transaction || []
 
-        transaction.push({
-            container_action: "create",
-            uuid: uuid,
-            blueprint: blueprint.uuid
+        var transactions = msg.inventory_transaction || []
+        transactions.forEach(function(t) {
+            console.log(t)
+            if (t.inventory === 'spawned')
+                t.inventory = uuid
         })
 
-        // TODO what happens if we fail to inform build and inventory,
-        // how we converge them?
-        return C.updateInventory(h.auth.account, transaction).then(function() {
-            if (blueprint.production !== undefined) {
-                return C.request('tech', 'POST', 201, '/facilities/'+uuid, {
-                    blueprint: blueprint.uuid
-                }, {
-                    sudo_account: h.auth.account
-                })
-            }
+        return C.request('tech', 'POST', 204, '/spawn', {
+            uuid: uuid,
+            blueprint: blueprint.uuid,
+            transactions: transactions,
+        }, {
+            sudo_account: h.auth.account
         }).then(function() {
             return uuid
         })
@@ -133,8 +129,20 @@ module.exports = {
                 if (data[0].count > 0)
                     throw "this account already has a starter ship"
 
+                var list = []
+
+                for (var type in loadout.contents) {
+                    list.push({
+                        inventory: 'spawned',
+                        slice: "default",
+                        blueprint: type,
+                        quantity: loadout.contents[type]
+                    })
+                }
+
                 return spawnShip({
                     blueprint: loadout.blueprint,
+                    inventory_transaction: list,
                     // TODO copy the position of the spawnpoint
                     position: {
                         x: 1,
@@ -142,19 +150,6 @@ module.exports = {
                         z: 1
                     }
                 }, h)
-            }).then(function(uuid) {
-                var list = []
-
-                for (var type in loadout.contents) {
-                    list.push({
-                        inventory: uuid,
-                        slice: "default",
-                        blueprint: type,
-                        quantity: loadout.contents[type]
-                    })
-                }
-
-                return C.updateInventory(h.auth.account, list)
             })
     },
     'undock': function(msg, h) {
@@ -186,7 +181,7 @@ module.exports = {
                 quantity: -1
             }]
             // TODO copy the position of the ship
-        })
+        }, h)
     },
     'spawnStructure': function(msg, h) {
         return spawnThing(msg, h)
