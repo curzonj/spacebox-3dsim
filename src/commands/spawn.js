@@ -71,7 +71,7 @@ function spawnThing(msg, h, fn) {
         // how we converge them?
         return C.updateInventory(h.auth.account, transaction).then(function() {
             if (blueprint.production !== undefined) {
-                return C.request('build', 'POST', 201, '/facilities/'+uuid, {
+                return C.request('tech', 'POST', 201, '/facilities/'+uuid, {
                     blueprint: blueprint.uuid
                 }, {
                     sudo_account: h.auth.account
@@ -111,7 +111,7 @@ function spawnShip(msg, h) {
 }
 
 function updateFacility(uuid, blueprint, account) {
-    return C.request('build', 'POST', 201, '/facilities/'+uuid, {
+    return C.request('tech', 'POST', 201, '/facilities/'+uuid, {
         blueprint: blueprint
     })
 }
@@ -159,7 +159,7 @@ module.exports = {
     },
     'undock': function(msg, h) {
         console.log("got the message")
-        return C.request('inventory', 'POST', 200, '/ships/'+msg.ship_uuid, {
+        return C.request('tech', 'POST', 200, '/ships/'+msg.ship_uuid, {
             in_space: true
         }, {
             sudo_account: h.auth.account
