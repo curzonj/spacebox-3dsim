@@ -50,18 +50,30 @@ function spawnThing(msg, h, fn) {
             fn(obj)
         }
 
-        // undock sets the uuid that inventory generated
-        // for the ship
-        if (msg.uuid !== undefined)
-            obj.uuid = msg.uuid;
-
         debug(obj)
 
-        // TODO what if the inventory transaction fails?
-        return worldState.addObject(obj).then(function(uuid) {
-            console.log("build a %s as %s", msg.blueprint, uuid)
+        var next = Q(null)
 
-            return [ uuid, blueprint ]
+        // undock sets the uuid that inventory generated
+        // for the ship
+        if (msg.uuid !== undefined) {
+            var target = worldState.get(msg.uuid)
+
+            if (target !== undefined)
+                next = next.then(function() {
+                    return worldState.cleanup(msg.uuid)
+                })
+
+            obj.uuid = msg.uuid;
+        }
+
+        // TODO what if the call to /spawn fails?
+        return next.then(function() {
+            return worldState.addObject(obj).then(function(uuid) {
+                console.log("build a %s as %s", msg.blueprint, uuid)
+
+                return [ uuid, blueprint ]
+            })
         })
     }).spread(function(uuid, blueprint) {
         // if msg.uuid exists then the ship is pre-existing

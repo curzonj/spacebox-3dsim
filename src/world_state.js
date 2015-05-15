@@ -70,6 +70,17 @@ extend(WorldState.prototype, {
         })
     },
 
+    cleanup: function(key) {
+        var obj = this.get(key)
+        if (obj.values.tombstone !== true)
+            throw "you can't clean up an object still alive"
+
+        return db.none("delete from space_objects where id = $1", key).
+        then(function() {
+            delete worldStateStorage[key.toString()]
+        })
+    },
+
     getAccountObjects: function(account) {
         return db.query("select * from space_objects where account_id = $1", [ account ]).
             then(function(data) {
