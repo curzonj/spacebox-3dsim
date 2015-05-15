@@ -28,16 +28,16 @@ var dao = {
                 }
             })
     },
-    insert: function(values) {
+    insert: function(uuid, values) {
         return db.
-            query("insert into space_objects (id, system_id, account_id, doc) values (uuid_generate_v1(), $1, $2, $3) returning id", [ values.solar_system, values.account, values ])
+            none("insert into space_objects (id, system_id, account_id, doc) values ($4, $1, $2, $3)", [ values.solar_system, values.account, values, uuid ])
     },
     update: function(key, values) {
     
-        return db.query("update space_objects set doc = $2, system_id = $3 where id = $1", [ key, values, values.solar_system ])
+        return db.none("update space_objects set doc = $2, system_id = $3 where id = $1", [ key, values, values.solar_system ])
     },
     tombstone: function(key) {
-        return db.query("update space_objects set tombstone = $2, tombstone_at = current_timestamp where id = $1 and tombstone = false and tombstone_at is null", [ key, true ] )
+        return db.none("update space_objects set tombstone = $2, tombstone_at = current_timestamp where id = $1 and tombstone = false and tombstone_at is null", [ key, true ] )
     }
 
 }
@@ -119,17 +119,18 @@ extend(WorldState.prototype, {
     },
 
     addObject: function(values) {
-        var self = this
+        var uuid = values.uuid || uuidGen.v1(),
+            self = this
+
+        delete values.uuid;
 
         self.emit('worldStatePrepareNewObject', values)
 
-        return dao.insert(values).
-            then(function(data) {
-                var id = data[0].id
-
-                debug("added object", id, values)
-                self.mutateWorldState(id, 0, values)
-                return id
+        return dao.insert(uuid, values).
+            then(function() {
+                debug("added object", uuid, values)
+                self.mutateWorldState(uuid, 0, values)
+                return uuid
             })
     },
 

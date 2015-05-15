@@ -14,7 +14,8 @@ var worldState = require('../world_state.js'),
 
 function spawnThing(msg, h, fn) {
     return Q.spread([C.getBlueprints(), solarsystems.getSpawnSystemId()], function(blueprints, solar_system) {
-        var account, blueprint = blueprints[msg.blueprint]
+        var account,
+            blueprint = blueprints[msg.blueprint]
 
         if (blueprint === undefined) {
             throw new Error("no such blueprint: "+msg.blueprint)
@@ -49,6 +50,11 @@ function spawnThing(msg, h, fn) {
             fn(obj)
         }
 
+        // undock sets the uuid that inventory generated
+        // for the ship
+        if (msg.uuid !== undefined)
+            obj.uuid = msg.uuid;
+
         debug(obj)
 
         // TODO what if the inventory transaction fails?
@@ -58,6 +64,10 @@ function spawnThing(msg, h, fn) {
             return [ uuid, blueprint ]
         })
     }).spread(function(uuid, blueprint) {
+        // if msg.uuid exists then the ship is pre-existing
+        if (msg.uuid !== undefined)
+            return
+        
         var obj = worldState.get(uuid)
 
         var transactions = msg.inventory_transaction || []
@@ -156,16 +166,34 @@ module.exports = {
                 }, h)
             })
     },
+    'dock': function(msg, h) {
+        var target = worldState.get(msg.ship_uuid)
+        if (target === undefined || target.values.tombstone === true) {
+            throw new Error("no such ship")
+        }
+
+        return worldState.mutateWorldState(target.key, target.rev, {
+            tombstone: true
+        }).then(function() {
+            return C.request('tech', 'POST', 200, '/ships/'+msg.ship_uuid, {
+                status: 'docked',
+                inventory: msg.inventory,
+                slice: msg.slice
+            }, {
+                sudo_account: h.auth.account
+            })
+        })
+    },
     'undock': function(msg, h) {
-        console.log("got the message")
         return C.request('tech', 'POST', 200, '/ships/'+msg.ship_uuid, {
-            in_space: true
+            status: 'undocked'
         }, {
             sudo_account: h.auth.account
         }).then(function(ship) {
-            console.log('spawning ship')
+            // TODO it has a uuid in inventory, we need to use the same one
             return spawnShip({
-                blueprint: ship.blueprint,
+                uuid: msg.ship_uuid,
+                blueprint: ship.doc.blueprint,
                 // TODO spawn it at the location it undocked from
                 position: {
                     x: 1,
