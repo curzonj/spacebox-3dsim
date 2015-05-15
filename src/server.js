@@ -76,6 +76,7 @@ app.post('/spodb/:uuid', function(req, res) {
         var obj = worldState.get(uuid)
         var new_obj = C.deepMerge(obj.values, {})
         C.deepMerge(blueprint, new_obj)
+        delete new_obj.uuid
 
         return worldState.mutateWorldState(uuid, obj.rev, new_obj, true)
     }).then(function() {

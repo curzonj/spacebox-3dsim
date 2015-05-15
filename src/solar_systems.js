@@ -90,7 +90,7 @@ var self = {
 }
 
 function checkWormholeTTL() {
-    console.log("checking expired wormholes")
+    debug("checking expired wormholes")
 
     db.query("select * from wormholes where expires_at < current_timestamp").
         then(function(data) {
