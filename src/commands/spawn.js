@@ -128,12 +128,6 @@ function spawnShip(msg, h) {
     })
 }
 
-function updateFacility(uuid, blueprint, account) {
-    return C.request('tech', 'POST', 201, '/facilities/'+uuid, {
-        blueprint: blueprint
-    })
-}
-
 var loadout = {
     blueprint: "7abb04d3-7d58-42d8-be93-89eb486a1c67",
     contents: {
