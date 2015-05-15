@@ -8,10 +8,9 @@ var WebSockets = require("ws"),
     uuidGen = require('node-uuid'),
     Q = require('q'),
     uriUtils = require('url'),
-    db = require('spacebox-common-native').db,
     C = require('spacebox-common')
 
-db.select('spodb')
+require('spacebox-common-native').db_select('spodb')
 Q.longStackSupport = true
 
 C.configure({

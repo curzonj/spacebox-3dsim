@@ -121,7 +121,11 @@ var loadout = {
 
 module.exports = {
     'spawn': function(msg, h) {
-        return spawnShip(msg, h)
+        if (h.auth.privileged) {
+            return spawnShip(msg, h)
+        } else {
+            throw "spawn requires a privileged account. use spawnStarter"
+        }
     },
     'spawnStarter': function(msg, h) {
         return db.query("select count(*)::int from space_objects where account_id = $1 and doc::json->>'blueprint' = $2", [ h.auth.account, loadout.blueprint ]).
@@ -184,6 +188,10 @@ module.exports = {
         }, h)
     },
     'spawnStructure': function(msg, h) {
-        return spawnThing(msg, h)
+        if (h.auth.privileged) {
+            return spawnThing(msg, h)
+        } else {
+            throw "spawnStructure requires a privileged account"
+        }
     }
 }
