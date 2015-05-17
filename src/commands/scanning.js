@@ -13,7 +13,7 @@ var worldState = require('../world_state.js'),
     solarsystems = require('../solar_systems.js')
 
 module.exports = {
-    'jumpWormhole': function(msg, h) {
+    'jumpWormhole': function(ctx, msg, h) {
         if (msg.shipID === undefined) {
             throw "you must provide a `shipID` parameter"
         } else if (msg.wormhole === undefined) {
@@ -74,7 +74,7 @@ module.exports = {
                 })
             })
     },
-    'scanWormholes': function(msg, h) {
+    'scanWormholes': function(ctx, msg, h) {
         var shipId = msg.shipID
 
         if (shipId === undefined) {

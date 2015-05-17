@@ -1,6 +1,7 @@
 'use strict';
 
-var Q = require('q')
+var Q = require('q'),
+    C = require('spacebox-common')
 
 // TODO some of these are restricted and need to be authenticated
 // TODO unrestricted commands still need to go the account's ships
@@ -23,8 +24,8 @@ handlers.forEach(function(name) {
 
 });
 
-function send_error(e, request_id, ws) {
-    console.log('error handling command: ', e, e.stack)
+function send_error(ctx, e, ws) {
+    ctx.log('3dsim', 'error handling command: ', e, e.stack)
 
     var details
 
@@ -34,7 +35,7 @@ function send_error(e, request_id, ws) {
 
     ws.send({
         type: 'error',
-        request_id: request_id,
+        request_id: ctx.id,
         message: e.toString(),
         details: details
     })
@@ -43,23 +44,24 @@ function send_error(e, request_id, ws) {
 
 module.exports = {
     dispatch: function(msg, info) {
-        var request_id
+        var request_id = msg.request_id,
+            ctx = new C.TracingContext(request_id),
+            cmd = msg.command
+
+        delete msg.request_id
+
+        ctx.log('3dsim', msg);
 
         try {
-            request_id = msg.request_id
-
-            var cmd = msg.command;
-            console.log(msg);
-
             if (processors.hasOwnProperty(cmd) && typeof processors[cmd] == 'function') {
-                Q(processors[cmd](msg, info)).fail(function(e) {
-                    send_error(e, request_id, info)
+                Q(processors[cmd](ctx, msg, info)).fail(function(e) {
+                    send_error(ctx, e, info)
                 }).done()
             } else {
                 throw("invalid command: "+cmd);
             }
         } catch(e) {
-            send_error(e, request_id, info)
+            send_error(ctx, e, info)
         }
     }
 };

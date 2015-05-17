@@ -2,17 +2,13 @@
 
 var Q = require('q'),
     uuidGen = require('node-uuid'),
-    npm_debug = require('debug'),
-    log = npm_debug('3dsim:info'),
-    error = npm_debug('3dsim:error'),
-    debug = npm_debug('3dsim:debug'),
     db = require('spacebox-common-native').db,
     C = require('spacebox-common')
 
 var worldState = require('../world_state.js'),
     solarsystems = require('../solar_systems.js')
 
-function spawnThing(msg, h, fn) {
+function spawnThing(ctx, msg, h, fn) {
     return Q.spread([C.getBlueprints(), solarsystems.getSpawnSystemId()], function(blueprints, solar_system) {
         var account,
             blueprint = blueprints[msg.blueprint]
@@ -50,60 +46,49 @@ function spawnThing(msg, h, fn) {
             fn(obj)
         }
 
-        debug(obj)
+        ctx.debug('3dsim', obj)
 
         var next = Q(null)
 
-        // undock sets the uuid that inventory generated
-        // for the ship
-        if (msg.uuid !== undefined) {
-            var target = worldState.get(msg.uuid)
+        if (msg.uuid === undefined) {
+            // This is a new object, setup in inventory first
+            obj.uuid = uuidGen.v1()
+
+            next = next.then(function() {
+                return C.request('tech', 'POST', 204, '/spawn', {
+                    uuid: obj.uuid,
+                    blueprint: blueprint.uuid,
+                    from: msg.from,
+                    items: msg.items
+                }, {
+                    sudo_account: h.auth.account
+                })
+            })
+        } else {
+            // This is an existing object that we may
+            // need to cleanup in spodb before creating again
+
+            obj.uuid = msg.uuid;
+            var target = worldState.get(obj.uuid)
 
             if (target !== undefined)
                 next = next.then(function() {
-                    return worldState.cleanup(msg.uuid)
+                    return worldState.cleanup(obj.uuid)
                 })
-
-            obj.uuid = msg.uuid;
         }
 
-        // TODO what if the call to /spawn fails?
         return next.then(function() {
             return worldState.addObject(obj).then(function(uuid) {
-                console.log("build a %s as %s", msg.blueprint, uuid)
+                ctx.log('3dsim', "built space object", { blueprint: msg.blueprint, id: uuid })
 
-                return [ uuid, blueprint ]
+                return uuid
             })
         })
-    }).spread(function(uuid, blueprint) {
-        // if msg.uuid exists then the ship is pre-existing
-        if (msg.uuid !== undefined)
-            return
-        
-        var obj = worldState.get(uuid)
-
-        var transactions = msg.inventory_transaction || []
-        transactions.forEach(function(t) {
-            console.log(t)
-            if (t.inventory === 'spawned')
-                t.inventory = uuid
-        })
-
-        return C.request('tech', 'POST', 204, '/spawn', {
-            uuid: uuid,
-            blueprint: blueprint.uuid,
-            transactions: transactions,
-        }, {
-            sudo_account: h.auth.account
-        }).then(function() {
-            return uuid
-        })
     })
-
 }
 
-function spawnShip(msg, h) {
-    return spawnThing(msg, h, function(ship) {
+function spawnShip(ctx, msg, h) {
+    return spawnThing(ctx, msg, h, function(ship) {
         if (ship.type != 'spaceship') {
             throw new Error("not a spaceship: " + ship.blueprint)
         }
@@ -136,33 +121,27 @@ var loadout = {
 }
 
 module.exports = {
-    'spawn': function(msg, h) {
+    'spawn': function(ctx, msg, h) {
         if (h.auth.privileged) {
             return spawnShip(msg, h)
         } else {
             throw "spawn requires a privileged account. use spawnStarter"
         }
     },
-    'spawnStarter': function(msg, h) {
+    'spawnStarter': function(ctx, msg, h) {
         return db.query("select count(*)::int from space_objects where account_id = $1 and doc::json->>'blueprint' = $2", [ h.auth.account, loadout.blueprint ]).
             then(function(data) {
                 if (data[0].count > 0)
                     throw "this account already has a starter ship"
 
-                var list = []
-
-                for (var type in loadout.contents) {
-                    list.push({
-                        inventory: 'spawned',
-                        slice: "default",
-                        blueprint: type,
-                        quantity: loadout.contents[type]
-                    })
-                }
-
-                return spawnShip({
+                return spawnShip(ctx, {
                     blueprint: loadout.blueprint,
-                    inventory_transaction: list,
+                    items: Object.keys(loadout.contents).map(function(key) {
+                        return {
+                            blueprint: key,
+                            quantity: loadout.contents[key],
+                        }
+                    }),
                     // TODO copy the position of the spawnpoint
                     position: {
                         x: 1,
@@ -172,7 +151,7 @@ module.exports = {
                 }, h)
             })
     },
-    'dock': function(msg, h) {
+    'dock': function(ctx, msg, h) {
         var target = worldState.get(msg.ship_uuid)
         if (target === undefined || target.values.tombstone === true) {
             throw new Error("no such ship")
@@ -190,14 +169,13 @@ module.exports = {
             })
         })
     },
-    'undock': function(msg, h) {
+    'undock': function(ctx, msg, h) {
         return C.request('tech', 'POST', 200, '/ships/'+msg.ship_uuid, {
             status: 'undocked'
         }, {
             sudo_account: h.auth.account
         }).then(function(ship) {
-            // TODO it has a uuid in inventory, we need to use the same one
-            return spawnShip({
+            return spawnShip(ctx, {
                 uuid: msg.ship_uuid,
                 blueprint: ship.doc.blueprint,
                 // TODO spawn it at the location it undocked from
@@ -209,21 +187,19 @@ module.exports = {
             }, h)
         })
     },
-    'deploy': function(msg, h) {
-        return spawnThing({
+    'deploy': function(ctx, msg, h) {
+        return spawnThing(ctx, {
             blueprint: msg.blueprint,
-            inventory_transaction: [{
-                inventory: msg.shipID,
-                slice: msg.slice,
-                blueprint: msg.blueprint,
-                quantity: -1
-            }]
+            from: {
+                uuid: msg.shipID,
+                slice: msg.slice
+            }
             // TODO copy the position of the ship
         }, h)
     },
-    'spawnStructure': function(msg, h) {
+    'spawnStructure': function(ctx, msg, h) {
         if (h.auth.privileged) {
-            return spawnThing(msg, h)
+            return spawnThing(ctx, msg, h)
         } else {
             throw "spawnStructure requires a privileged account"
         }
