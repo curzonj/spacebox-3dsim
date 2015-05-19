@@ -50,12 +50,12 @@ function spawnThing(ctx, msg, h, fn) {
 
         var next = Q(null)
 
-        if (msg.uuid === undefined) {
+        if (msg.uuid === undefined && obj.inventory_limits !== undefined) {
             // This is a new object, setup in inventory first
             obj.uuid = uuidGen.v1()
 
             next = next.then(function() {
-                return C.request('tech', 'POST', 204, '/spawn', {
+                return C.request('tech', 'POST', 204, '/containers', {
                     uuid: obj.uuid,
                     blueprint: blueprint.uuid,
                     from: msg.from,
@@ -157,15 +157,16 @@ module.exports = {
             throw new Error("no such ship")
         }
 
-        return worldState.mutateWorldState(target.key, target.rev, {
-            tombstone: true
+        return C.request('tech', 'POST', 200, '/ships/'+msg.ship_uuid, {
+            status: 'docked',
+            inventory: msg.inventory,
+            slice: msg.slice
+        }, {
+            sudo_account: h.auth.account
         }).then(function() {
-            return C.request('tech', 'POST', 200, '/ships/'+msg.ship_uuid, {
-                status: 'docked',
-                inventory: msg.inventory,
-                slice: msg.slice
-            }, {
-                sudo_account: h.auth.account
+            return worldState.mutateWorldState(target.key, target.rev, {
+                tombstone_cause: 'docking',
+                tombstone: true
             })
         })
     },

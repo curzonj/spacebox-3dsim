@@ -3,6 +3,7 @@
 var EventEmitter = require('events').EventEmitter,
     extend = require('extend'),
     util = require('util'),
+    uriUtils = require('url'),
     WebSocket = require('ws'),
     worldState = require('../world_state.js'),
     dispatcher = require('../commands/dispatcher.js'),
@@ -13,15 +14,15 @@ var EventEmitter = require('events').EventEmitter,
 var WSController = module.exports = function(ws) {
     this.ws = ws
     this.auth = ws.upgradeReq.authentication
-    this.visibility = new Visibility(this.auth)
 
     var self = this
     Q.fcall(function() {
-        if (ws.upgradeReq.url == '/arena') {
-            return self.getArenaToken().then(function() {
+        var uri = uriUtils.parse(ws.upgradeReq.url)
+        if (uri.pathname == '/temporary') {
+            return self.getTemporaryAccount().then(function() {
                 self.send({
-                    type: "arenaAccount",
-                    account: self.auth
+                    type: "tempAccount",
+                    auth: self.auth
                 })
             })
         }
@@ -36,8 +37,8 @@ extend(WSController.prototype, {
         this.ws.on('message', this.onWSMessageReceived.bind(this))
         this.ws.on('close', this.onConnectionClosed.bind(this))
     },
-    getArenaToken: function() {
-        // TODO drop the connection when the arena account expires
+    getTemporaryAccount: function() {
+        // TODO drop the connection when the temp account expires
         var self = this
         return C.request('auth', 'POST', 200, '/accounts/temporary', {
             ttl: 300, // 5min
@@ -50,6 +51,8 @@ extend(WSController.prototype, {
         })
     },
     onConnectionOpen: function() {
+        this.visibility = new Visibility(this.auth)
+
         this.setupConnectionCallbacks()
         console.log("connected")
 

@@ -42,7 +42,7 @@ extend(Class.prototype, {
 
         return worldState.getAccountObjects(this.auth.account).then(function(data) {
             data.forEach(function(obj) {
-               self.privilegedKeys[obj.key] = true
+                self.privilegedKeys[obj.key] = true
 
                 var list = self.visibleSystems[obj.values.solar_system] || []
                 if (list.indexOf(obj.key) === -1)
@@ -68,14 +68,14 @@ extend(Class.prototype, {
     },
     checkVisibility: function(key, patch) {
         if (patch.account !== undefined && patch.account == this.auth.account) {
-           this.privilegedKeys[key] = true
+            this.privilegedKeys[key] = true
         }
 
         var obj,
-            privileged = this.auth.priviliged || (this.privilegedKeys[key] === true),
-            point = this.visiblePoints[key],
-            before = (point !== undefined),
-            currently = false
+        privileged = this.auth.priviliged || (this.privilegedKeys[key] === true),
+        point = this.visiblePoints[key],
+        before = (point !== undefined),
+        currently = false
 
 
         if (patch.tombstone) {
@@ -138,8 +138,8 @@ extend(Class.prototype, {
     },
     updateScanPoints: function(key, patch) {
         var changes = [],
-            point = this.scanPoints[key] = this.scanPoints[key] || {},
-            oldSystem = point.solar_system
+        point = this.scanPoints[key] = this.scanPoints[key] || {},
+        oldSystem = point.solar_system
 
         debug('old scanpoint', point)
 
@@ -164,7 +164,10 @@ extend(Class.prototype, {
 
                             changes.push({
                                 key: v,
-                                values: { tombstone: true }
+                                values: {
+                                    tombstone_cause: 'own_visibility',
+                                    tombstone: true
+                                }
                             })
                         }
                     }
@@ -218,7 +221,10 @@ extend(Class.prototype, {
                           this.filterProperties(key, patch) })
             } else {
                 // TODO what effect? warp, etc
-                list.push({ key: key, values: { tombstone: true } })
+                list.push({ key: key, values: {
+                    tombstone_cause: 'other_visibility',
+                    tombstone: true
+                } })
             }
         } else {
             if (visible.currently) {

@@ -33,7 +33,6 @@ var dao = {
             none("insert into space_objects (id, system_id, account_id, doc) values ($4, $1, $2, $3)", [ values.solar_system, values.account, values, uuid ])
     },
     update: function(key, values) {
-    
         return db.none("update space_objects set doc = $2, system_id = $3 where id = $1", [ key, values, values.solar_system ])
     },
     tombstone: function(key) {
@@ -182,7 +181,11 @@ extend(WorldState.prototype, {
         }
 
         if (patch.tombstone === true && old.values.tombstone !== true) {
-            dao.tombstone(key);
+            dao.tombstone(key).then(function() {
+                if (patch.tombstone_cause === 'destroy' && old.values.inventory_limits !== undefined) {
+                    return C.request('tech', 'DELETE', 204, '/containers/'+key)
+                }
+            })
         }
 
         C.deepMerge(patch, old.values)
@@ -198,7 +201,7 @@ extend(WorldState.prototype, {
             }
         })
 
-
+        // TODO if this updates tombstone it needs to set tombstone_at
         if (keys_to_update_on.some(function(i) { return patch.hasOwnProperty(i) })) {
             return dao.update(key, old.values)
         } else {

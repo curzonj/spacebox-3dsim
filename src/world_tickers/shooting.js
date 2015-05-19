@@ -43,6 +43,7 @@ var obj = {
                                 // TODO implement this effect
                                 explosion: true
                             },
+                            tombstone_cause: 'destroyed',
                             tombstone: true
                         })
                         worldState.mutateWorldState(ship.key, ship.rev, {
