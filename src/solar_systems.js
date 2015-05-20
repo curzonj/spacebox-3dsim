@@ -35,14 +35,8 @@ var dao = {
 
 var self = {
     getSpawnSystemId: function() {
-        return db.query("select * from solar_systems limit 1").
-            then(function(data) {
-                if (data.length === 0) {
-                    return self.createSystem()
-                } else {
-                    return data[0].id
-                }
-            })
+        return db.one("select id from solar_systems offset floor(random()*(select count(*) from solar_systems)) limit 1").
+            then(function(data) { return data.id })
     },
     createSystem: function() {
         var doc = { }

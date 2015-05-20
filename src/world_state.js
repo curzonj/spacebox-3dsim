@@ -182,7 +182,7 @@ extend(WorldState.prototype, {
 
         if (patch.tombstone === true && old.values.tombstone !== true) {
             dao.tombstone(key).then(function() {
-                if (patch.tombstone_cause === 'destroy' && old.values.inventory_limits !== undefined) {
+                if ((patch.tombstone_cause === 'destroyed' || patch.tombstone_cause === 'despawned') && old.values.inventory_limits !== undefined) {
                     return C.request('tech', 'DELETE', 204, '/containers/'+key)
                 }
             })

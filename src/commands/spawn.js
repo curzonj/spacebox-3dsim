@@ -17,6 +17,9 @@ function spawnThing(ctx, msg, h, fn) {
             throw new Error("no such blueprint: "+msg.blueprint)
         }
 
+        if (msg.solar_system === undefined)
+            throw new Error("must specify the spawn solar_system")
+
         if (h.auth.privileged) {
             account = msg.account || h.auth.account
         } else {
@@ -31,7 +34,6 @@ function spawnThing(ctx, msg, h, fn) {
             account: account,
             effects: {},
             position: { x: 0, y: 0, z: 0 },
-            solar_system: solar_system
         })
 
         C.deepMerge(blueprint, obj);
@@ -128,26 +130,29 @@ module.exports = {
         }
     },
     'spawnStarter': function(ctx, msg, h) {
-        return db.query("select count(*)::int from space_objects where account_id = $1 and doc::json->>'blueprint' = $2", [ h.auth.account, loadout.blueprint ]).
+        return db.query("select count(*)::int from space_objects where tombstone = 'f' and account_id = $1 and doc::json->>'blueprint' = $2", [ h.auth.account, loadout.blueprint ]).
             then(function(data) {
                 if (data[0].count > 0)
                     throw "this account already has a starter ship"
 
-                return spawnShip(ctx, {
-                    blueprint: loadout.blueprint,
-                    items: Object.keys(loadout.contents).map(function(key) {
-                        return {
-                            blueprint: key,
-                            quantity: loadout.contents[key],
+                return solarsystems.getSpawnSystemId().then(function(solar_system) {
+                    return spawnShip(ctx, {
+                        blueprint: loadout.blueprint,
+                        solar_system: solar_system,
+                        items: Object.keys(loadout.contents).map(function(key) {
+                            return {
+                                blueprint: key,
+                                quantity: loadout.contents[key],
+                            }
+                        }),
+                        // TODO copy the position of the spawnpoint
+                        position: {
+                            x: 1,
+                            y: 1,
+                            z: 1
                         }
-                    }),
-                    // TODO copy the position of the spawnpoint
-                    position: {
-                        x: 1,
-                        y: 1,
-                        z: 1
-                    }
-                }, h)
+                    }, h)
+                })
             })
     },
     'dock': function(ctx, msg, h) {
@@ -173,26 +178,37 @@ module.exports = {
             account: h.auth.account,
             status: 'undocked'
         }).then(function(ship) {
+            var container = worldState.get(ship.container_id)
+
+            if (container === undefined)
+                throw new Error("failed to find the container that launched the ship. lost in space! ship_id="+msg.ship_uuid)
+
+            var position = C.deepMerge(container.values.position, {})
+
             return spawnShip(ctx, {
-                uuid: msg.ship_uuid,
+                uuid: ship.id,
                 blueprint: ship.doc.blueprint,
-                // TODO spawn it at the location it undocked from
-                position: {
-                    x: 1,
-                    y: 1,
-                    z: 1
-                }
+                position: position,
+                solar_system: container.values.solar_system
             }, h)
         })
     },
     'deploy': function(ctx, msg, h) {
+        var ship = worldState.get(msg.shipID)
+
+        if (ship === undefined)
+            throw new Error("no such ship in space")
+
+        var position = C.deepMerge(ship.values.position, {})
+
         return spawnThing(ctx, {
             blueprint: msg.blueprint,
+            solar_system: ship.values.solar_system,
+            position: position,
             from: {
                 uuid: msg.shipID,
                 slice: msg.slice
             }
-            // TODO copy the position of the ship
         }, h)
     },
     'spawnStructure': function(ctx, msg, h) {
