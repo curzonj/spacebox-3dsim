@@ -14,19 +14,7 @@ var EventEmitter = require('events').EventEmitter,
 var WSController = module.exports = function(ws) {
     this.ws = ws
     this.auth = ws.upgradeReq.authentication
-
-    var self = this
-    Q.fcall(function() {
-        var uri = uriUtils.parse(ws.upgradeReq.url)
-        if (uri.pathname == '/temporary') {
-            return self.getTemporaryAccount().then(function() {
-                self.send({
-                    type: "tempAccount",
-                    auth: self.auth
-                })
-            })
-        }
-    }).then(self.onConnectionOpen.bind(self)).done()
+    this.onConnectionOpen()
 }
 
 util.inherits(WSController, EventEmitter)
@@ -36,19 +24,6 @@ extend(WSController.prototype, {
     setupConnectionCallbacks: function() {
         this.ws.on('message', this.onWSMessageReceived.bind(this))
         this.ws.on('close', this.onConnectionClosed.bind(this))
-    },
-    getTemporaryAccount: function() {
-        // TODO drop the connection when the temp account expires
-        var self = this
-        return C.request('auth', 'POST', 200, '/accounts/temporary', {
-            ttl: 300, // 5min
-        }, {
-            sudo_account: self.auth.account,
-        }).then(function(resp) {
-            self.auth = resp
-        }).fail(function(e) {
-            throw new Error("not authorized")
-        })
     },
     onConnectionOpen: function() {
         this.visibility = new Visibility(this.auth)

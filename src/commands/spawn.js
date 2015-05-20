@@ -57,11 +57,10 @@ function spawnThing(ctx, msg, h, fn) {
             next = next.then(function() {
                 return C.request('tech', 'POST', 204, '/containers', {
                     uuid: obj.uuid,
+                    account: h.auth.account,
                     blueprint: blueprint.uuid,
                     from: msg.from,
                     items: msg.items
-                }, {
-                    sudo_account: h.auth.account
                 })
             })
         } else {
@@ -159,10 +158,9 @@ module.exports = {
 
         return C.request('tech', 'POST', 200, '/ships/'+msg.ship_uuid, {
             status: 'docked',
+            account: h.auth.account,
             inventory: msg.inventory,
             slice: msg.slice
-        }, {
-            sudo_account: h.auth.account
         }).then(function() {
             return worldState.mutateWorldState(target.key, target.rev, {
                 tombstone_cause: 'docking',
@@ -172,9 +170,8 @@ module.exports = {
     },
     'undock': function(ctx, msg, h) {
         return C.request('tech', 'POST', 200, '/ships/'+msg.ship_uuid, {
+            account: h.auth.account,
             status: 'undocked'
-        }, {
-            sudo_account: h.auth.account
         }).then(function(ship) {
             return spawnShip(ctx, {
                 uuid: msg.ship_uuid,
