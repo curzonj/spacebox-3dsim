@@ -196,8 +196,12 @@ module.exports = {
     'deploy': function(ctx, msg, h) {
         var ship = worldState.get(msg.shipID)
 
-        if (ship === undefined)
+        // Only ships may deploy things
+        if (ship === undefined) {
             throw new Error("no such ship in space")
+        } else if (ship.values.type != 'spaceship') {
+            throw new Error("not a spaceship: " + ship.values.blueprint)
+        }
 
         var position = C.deepMerge(ship.values.position, {})
 
