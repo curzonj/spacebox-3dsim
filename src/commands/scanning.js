@@ -14,13 +14,13 @@ var worldState = require('../world_state.js'),
 
 module.exports = {
     'jumpWormhole': function(ctx, msg, h) {
-        if (msg.shipID === undefined) {
-            throw "you must provide a `shipID` parameter"
+        if (msg.vessel === undefined) {
+            throw "you must provide a `vessel` parameter"
         } else if (msg.wormhole === undefined) {
             throw "you must provide a `wormhole` parameter"
         }
 
-        var ship = worldState.get(msg.shipID)
+        var ship = worldState.get(msg.vessel)
         var wormhole = worldState.get(msg.wormhole)
 
         var systemId = ship.values.solar_system
@@ -30,6 +30,8 @@ module.exports = {
             throw("that's not a wormhole")
         } else if (wormhole.values.tombstone === true) {
             throw("that wormhole has collapsed")
+        } else if (ship.values.engine !== undefined) {
+            throw("that vessel can't move")
         }
 
         debug(wormhole)
@@ -67,7 +69,7 @@ module.exports = {
                 return before.then(function() {
                     var destination_spo = worldState.get(destination_id)
 
-                    return worldState.mutateWorldState(msg.shipID, ship.rev, {
+                    return worldState.mutateWorldState(msg.vessel, ship.rev, {
                         solar_system: destination_spo.values.solar_system,
                         position: destination_spo.values.position,
                     })
@@ -75,15 +77,15 @@ module.exports = {
             })
     },
     'scanWormholes': function(ctx, msg, h) {
-        var shipId = msg.shipID
+        var shipId = msg.vessel
 
         if (shipId === undefined) {
-            throw "you must provide a `shipID` parameter"
+            throw "you must provide a `vessel` parameter"
         }
 
         var ship = worldState.get(shipId)
         if (ship === undefined) {
-            throw "invalid shipID"
+            throw "invalid vessel"
         }
 
         var systemId = ship.values.solar_system

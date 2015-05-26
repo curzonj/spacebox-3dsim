@@ -4,7 +4,7 @@ var worldState = require('../world_state.js')
 
 var obj = {
     worldTick: function(tickMs) {
-        worldState.scanDistanceFrom(undefined, "spaceship").forEach(function(ship) {
+        worldState.scanDistanceFrom(undefined, undefined).forEach(function(ship) {
             // TODO Should make a better api for handling a subsystem state
             if (ship.values.weapon && ship.values.weapon.state == "shoot") {
                 var target = worldState.get(ship.values.weapon.target)

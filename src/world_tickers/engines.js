@@ -339,7 +339,10 @@ var funcs = {
             return worldState.get(ship.key)
         }
 
-        worldState.scanDistanceFrom(undefined, "spaceship").forEach(function(ship) {
+        worldState.scanDistanceFrom(undefined, undefined).forEach(function(ship) {
+            if (ship.values.engine === undefined)
+                return
+
             var cmds = ["lookAt", "rotation", "acceleration", "velocity"]
             var engine_state = ship.values.engine.state
 

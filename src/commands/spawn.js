@@ -26,6 +26,8 @@ function spawnThing(ctx, msg, h, fn) {
             account = h.auth.account
         }
 
+        ctx.log('3dsim', 'spawnThing msg', msg)
+
         var obj = C.deepMerge({
             position: msg.position,
             solar_system: msg.solar_system
@@ -33,7 +35,10 @@ function spawnThing(ctx, msg, h, fn) {
             blueprint: blueprint.uuid,
             account: account,
             effects: {},
+            subsystems: [],
             position: { x: 0, y: 0, z: 0 },
+            velocity: { x: 0, y: 0, z: 0 },
+            facing: { x: 0, y: 0, z: 0, w: 1 },
         })
 
         C.deepMerge(blueprint, obj);
@@ -42,6 +47,9 @@ function spawnThing(ctx, msg, h, fn) {
         delete obj.uuid
 
         obj.health = obj.maxHealth
+        obj.subsystems.forEach(function(s) {
+            obj[s].state = "none"
+        })
 
         if (fn !== undefined) {
             // TODO error handling
@@ -51,31 +59,35 @@ function spawnThing(ctx, msg, h, fn) {
         ctx.debug('3dsim', obj)
 
         var next = Q(null)
+        
+        if (obj.type === "vessel") {
+            if (msg.uuid === undefined) {
+                // This is a new object, setup in inventory first
+                obj.uuid = uuidGen.v1()
+            } else {
+                obj.uuid = msg.uuid;
+                var target = worldState.get(obj.uuid)
 
-        if (msg.uuid === undefined && obj.inventory_limits !== undefined) {
-            // This is a new object, setup in inventory first
-            obj.uuid = uuidGen.v1()
+                if (target !== undefined)
+                    next = next.then(function() {
+                        return worldState.cleanup(obj.uuid)
+                    })
+            }
+
+            /*
+             * Remove item from the inventory, unpacking it if needed
+             * Dock is just transfering the item back to inventory
+             */
 
             next = next.then(function() {
-                return C.request('tech', 'POST', 204, '/containers', {
+                return C.request('tech', 'POST', 204, '/vessels', {
                     uuid: obj.uuid,
                     account: h.auth.account,
                     blueprint: blueprint.uuid,
-                    from: msg.from,
-                    items: msg.items
-                })
+                    from: msg.from || { uuid: null, slice: null },
+                    contents: msg.items
+                }, ctx)
             })
-        } else {
-            // This is an existing object that we may
-            // need to cleanup in spodb before creating again
-
-            obj.uuid = msg.uuid;
-            var target = worldState.get(obj.uuid)
-
-            if (target !== undefined)
-                next = next.then(function() {
-                    return worldState.cleanup(obj.uuid)
-                })
         }
 
         return next.then(function() {
@@ -84,32 +96,6 @@ function spawnThing(ctx, msg, h, fn) {
 
                 return uuid
             })
-        })
-    })
-}
-
-function spawnShip(ctx, msg, h) {
-    return spawnThing(ctx, msg, h, function(ship) {
-        if (ship.type != 'spaceship') {
-            throw new Error("not a spaceship: " + ship.blueprint)
-        }
-
-        C.deepMerge({
-            velocity: {
-                x: 0,
-                y: 0,
-                z: 0
-            },
-            facing: {
-                x: 0,
-                y: 0,
-                z: 0,
-                w: 1
-            }
-        }, ship)
-
-        ship.subsystems.forEach(function(s) {
-            ship[s].state = "none"
         })
     })
 }
@@ -124,102 +110,67 @@ var loadout = {
 module.exports = {
     'spawn': function(ctx, msg, h) {
         if (h.auth.privileged) {
-            return spawnShip(msg, h)
+            return spawnThing(ctx, msg, h)
         } else {
             throw "spawn requires a privileged account. use spawnStarter"
         }
     },
     'spawnStarter': function(ctx, msg, h) {
         return db.query("select count(*)::int from space_objects where tombstone = 'f' and account_id = $1 and doc::json->>'blueprint' = $2", [ h.auth.account, loadout.blueprint ]).
-            then(function(data) {
-                if (data[0].count > 0)
-                    throw "this account already has a starter ship"
+        then(function(data) {
+            if (data[0].count > 0)
+                throw "this account already has a starter ship"
 
-                return solarsystems.getSpawnSystemId().then(function(solar_system) {
-                    return spawnShip(ctx, {
-                        blueprint: loadout.blueprint,
-                        solar_system: solar_system,
-                        items: Object.keys(loadout.contents).map(function(key) {
-                            return {
-                                blueprint: key,
-                                quantity: loadout.contents[key],
-                            }
-                        }),
-                        // TODO copy the position of the spawnpoint
-                        position: {
-                            x: 1,
-                            y: 1,
-                            z: 1
+            return solarsystems.getSpawnSystemId().then(function(solar_system) {
+                return spawnThing(ctx, {
+                    blueprint: loadout.blueprint,
+                    // TODO copy the position of the spawnpoint
+                    solar_system: solar_system,
+                    items: Object.keys(loadout.contents).map(function(key) {
+                        return {
+                            blueprint: key,
+                            quantity: loadout.contents[key],
                         }
-                    }, h)
-                })
+                    })
+                }, h)
             })
+        })
     },
     'dock': function(ctx, msg, h) {
-        var target = worldState.get(msg.ship_uuid)
+        var target = worldState.get(msg.vessel_uuid)
         if (target === undefined || target.values.tombstone === true) {
-            throw new Error("no such ship")
+            throw new Error("no such vessel")
         }
 
-        return C.request('tech', 'POST', 200, '/ships/'+msg.ship_uuid, {
-            status: 'docked',
+        return C.request('tech', 'POST', 204, '/vessels/'+msg.vessel_uuid, {
             account: h.auth.account,
             inventory: msg.inventory,
             slice: msg.slice
-        }).then(function() {
+        }, ctx).then(function() {
             return worldState.mutateWorldState(target.key, target.rev, {
                 tombstone_cause: 'docking',
                 tombstone: true
             })
         })
     },
-    'undock': function(ctx, msg, h) {
-        return C.request('tech', 'POST', 200, '/ships/'+msg.ship_uuid, {
-            account: h.auth.account,
-            status: 'undocked'
-        }).then(function(ship) {
-            var container = worldState.get(ship.container_id)
-
-            if (container === undefined)
-                throw new Error("failed to find the container that launched the ship. lost in space! ship_id="+msg.ship_uuid)
-
-            var position = C.deepMerge(container.values.position, {})
-
-            return spawnShip(ctx, {
-                uuid: ship.id,
-                blueprint: ship.doc.blueprint,
-                position: position,
-                solar_system: container.values.solar_system
-            }, h)
-        })
-    },
     'deploy': function(ctx, msg, h) {
-        var ship = worldState.get(msg.shipID)
+        var container = worldState.get(msg.container_id)
 
-        // Only ships may deploy things
-        if (ship === undefined) {
-            throw new Error("no such ship in space")
-        } else if (ship.values.type != 'spaceship') {
-            throw new Error("not a spaceship: " + ship.values.blueprint)
-        }
+        if (container === undefined)
+            throw new Error("failed to find the container to launch the vessel. container_id="+msg.container_id)
 
-        var position = C.deepMerge(ship.values.position, {})
+        if (msg.slice === undefined || msg.blueprint === undefined)
+            throw new Error("missing parameters: slice or blueprint")
 
         return spawnThing(ctx, {
+            uuid: msg.uuid, // uuid make be undefined here, spawnThing will populate it if need be
             blueprint: msg.blueprint,
-            solar_system: ship.values.solar_system,
-            position: position,
+            position: C.deepMerge(container.values.position, {}),
+            solar_system: container.values.solar_system,
             from: {
-                uuid: msg.shipID,
+                uuid: msg.container_id,
                 slice: msg.slice
             }
         }, h)
     },
-    'spawnStructure': function(ctx, msg, h) {
-        if (h.auth.privileged) {
-            return spawnThing(ctx, msg, h)
-        } else {
-            throw "spawnStructure requires a privileged account"
-        }
-    }
 }
