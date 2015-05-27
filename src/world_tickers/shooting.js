@@ -5,21 +5,23 @@ var worldState = require('../world_state.js')
 var obj = {
     worldTick: function(tickMs) {
         worldState.scanDistanceFrom(undefined, undefined).forEach(function(ship) {
+            var system = ship.values.systems.weapon
+
             // TODO Should make a better api for handling a subsystem state
-            if (ship.values.weapon && ship.values.weapon.state == "shoot") {
-                var target = worldState.get(ship.values.weapon.target)
+            if (system && system.state == "shoot") {
+                var target = worldState.get(system.target)
 
                 if (target === undefined || target.values.tombstone === true) {
                     worldState.mutateWorldState(ship.key, ship.rev, {
                         weapon: {
-                            state: "none"
+                            state: null
                         },
                         effects: {
                             shooting: -1
                         }
                     })
                 } else {
-                    var damage = ship.values.weapon.damage
+                    var damage = system.damage
 
                     if (target.values.health > damage) {
                         var health = target.values.health - damage
@@ -48,7 +50,7 @@ var obj = {
                         })
                         worldState.mutateWorldState(ship.key, ship.rev, {
                             weapon: {
-                                state: "none"
+                                state: null
                             },
                             effects: {
                                 shooting: -1

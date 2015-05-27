@@ -34,7 +34,7 @@ function buildCurrentDirection(direction, orientationQ) {
 }
 
 function validAcceleration(ship, desired) {
-    var max = ship.values.engine.maxThrust
+    var max = ship.values.systems.engine.maxThrust
 
     if (desired === undefined || isNaN(desired)) {
         desired = max
@@ -90,7 +90,7 @@ var funcs = {
             } else {
                 worldState.mutateWorldState(ship.key, ship.rev, {
                     engine: {
-                        state: "none",
+                        state: null,
                         acceleration: 0
                     }
                 })
@@ -108,7 +108,7 @@ var funcs = {
             orientationQ = new THREE.Quaternion()
 
         return function(ship) {
-            var orbitTarget = worldState.get(ship.values.engine.orbitTarget)
+            var orbitTarget = worldState.get(ship.values.systems.engine.orbitTarget)
             if (orbitTarget === undefined || orbitTarget.values.tombstone === true) {
                 worldState.mutateWorldState(ship.key, ship.rev, {
                     engine: {
@@ -122,9 +122,9 @@ var funcs = {
                 return
             }
 
-            var orbitRadius = ship.values.engine.orbitRadius
-            var maxTheta = ship.values.engine.maxTheta
-            var maxVelocity = ship.values.engine.maxVelocity
+            var orbitRadius = ship.values.systems.engine.orbitRadius
+            var maxTheta = ship.values.systems.engine.maxTheta
+            var maxVelocity = ship.values.systems.engine.maxVelocity
 
             buildVector(position, ship.values.position)
             buildVector(target, orbitTarget.values.position)
@@ -205,16 +205,16 @@ var funcs = {
             rotationCrossVector = new THREE.Vector3()
 
         return function(ship) {
-            if (typeof ship.values.engine.lookAt !== "object") {
+            if (typeof ship.values.systems.engine.lookAt !== "object") {
                 return
             }
 
             buildVector(position, ship.values.position)
-            buildVector(target, ship.values.engine.lookAt)
+            buildVector(target, ship.values.systems.engine.lookAt)
 
             if (target.length() === 0) {
                 console.log("lookAt value was bogus")
-                console.log(ship.values.engine)
+                console.log(ship.values.systems.engine)
                 return
             }
 
@@ -242,11 +242,11 @@ var funcs = {
             orientationQ = new THREE.Quaternion()
 
         return function(ship) {
-            var maxTheta = ship.values.engine.maxTheta
-            var theta = ship.values.engine.theta
+            var maxTheta = ship.values.systems.engine.maxTheta
+            var theta = ship.values.systems.engine.theta
             theta = Math.min(theta, maxTheta)
 
-            buildVector(thetaAxis, ship.values.engine.thetaAxis)
+            buildVector(thetaAxis, ship.values.systems.engine.thetaAxis)
             thetaAxis.normalize()
 
             if (theta <= 0 || thetaAxis.length() === 0) {
@@ -282,8 +282,8 @@ var funcs = {
             thrustVector = new THREE.Vector3()
 
         return function(ship) {
-            var thrust = ship.values.engine.acceleration,
-                maxThrust = ship.values.engine.maxThrust
+            var thrust = ship.values.systems.engine.acceleration,
+                maxThrust = ship.values.systems.engine.maxThrust
 
             if (thrust === undefined || isNaN(thrust) || thrust <= 0) {
                 return
@@ -318,8 +318,8 @@ var funcs = {
             buildVector(velocityV, ship.values.velocity)
 
             if (velocityV.length() > 0) {
-                if (velocityV.length() > ship.values.engine.maxVelocity) {
-                    velocityV.setLength(ship.values.engine.maxVelocity)
+                if (velocityV.length() > ship.values.systems.engine.maxVelocity) {
+                    velocityV.setLength(ship.values.systems.engine.maxVelocity)
                 }
 
                 buildVector(position, ship.values.position)
@@ -340,19 +340,19 @@ var funcs = {
         }
 
         worldState.scanDistanceFrom(undefined, undefined).forEach(function(ship) {
-            if (ship.values.engine === undefined)
+            if (ship.values.systems.engine === undefined)
                 return
 
             var cmds = ["lookAt", "rotation", "acceleration", "velocity"]
-            var engine_state = ship.values.engine.state
+            var engine_state = ship.values.systems.engine.state
 
-            if (engine_state !== "none") {
+            if (engine_state !== null) {
                 var fn = funcs["handle_" + engine_state]
 
                 if (fn === undefined) {
                     worldState.mutateWorldState(ship.key, ship.rev, {
                         engine: {
-                            state: "none"
+                            state: null
                         }
                     })
                 } else {

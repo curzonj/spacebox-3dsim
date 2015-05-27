@@ -1,16 +1,18 @@
 'use strict';
 
+require('spacebox-common-native').db_select('spodb')
+
 var WebSockets = require("ws"),
     http = require("http"),
     express = require("express"),
-    logger = require('morgan'),
+    morgan = require('morgan'),
     bodyParser = require('body-parser'),
     uuidGen = require('node-uuid'),
     Q = require('q'),
     uriUtils = require('url'),
-    C = require('spacebox-common')
+    C = require('spacebox-common'),
+    space_data = require('./space_data.js')
 
-require('spacebox-common-native').db_select('spodb')
 Q.longStackSupport = true
 
 C.configure({
@@ -21,7 +23,23 @@ C.configure({
 var app = express()
 var port = process.env.PORT || 5000
 
-app.use(logger('dev'))
+var req_id = 0
+app.use(function (req, res, next) {
+    req_id = req_id + 1
+    req.request_id = req_id
+    req.ctx = new C.TracingContext(req_id)
+
+    next()
+});
+
+morgan.token('request_id', function(req, res){ return req.ctx.id })
+
+app.use(morgan('req_id=:request_id :method :url', {
+    immediate: true
+}))
+
+app.use(morgan('req_id=:request_id :method :url :status :res[content-length] - :response-time ms'))
+
 C.http.cors_policy(app)
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({
