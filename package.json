@@ -20,6 +20,11 @@
     "postgrator": "latest",
     "three": "latest"
   },
+  "devDependencies": {
+    "require-dir": "^0.1.0",
+    "gulp-jsbeautifier": "latest",
+    "gulp": "^3.8.7"
+  },
   "jshintConfig": {
     "node": true,
     "newcap": false,
