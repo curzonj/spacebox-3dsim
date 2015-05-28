@@ -73,12 +73,12 @@ module.exports = {
         return Q.spread([
             solarsystems.getSpawnSystemId(),
             C.getBlueprints(),
-            C.request('tech', 'POST', 204, '/vessels/starter', {
+            C.request('tech', 'POST', 200, '/getting_started', {
                 uuid: uuid,
                 account: h.auth.account
             }, ctx)
         ], function(solar_system, blueprints, data) {
-            var blueprint = data.blueprint_id
+            var blueprint = blueprints[data.blueprint_id]
         
             // TODO copy the position of the spawnpoint
             return space_data.spawn(ctx, uuid, blueprint, {

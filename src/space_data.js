@@ -38,6 +38,7 @@ module.exports = {
         if (blueprint.thrust !== undefined) {
             // TODO this should obviously be calculated
             obj.systems.engine = {
+                state: null,
                 "maxVelocity": 1.0,
                 "maxTheta": Math.PI / 10,
                 "maxThrust": 0.1

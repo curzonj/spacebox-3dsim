@@ -351,8 +351,10 @@ var funcs = {
 
                 if (fn === undefined) {
                     worldState.mutateWorldState(ship.key, ship.rev, {
-                        engine: {
-                            state: null
+                        systems: {
+                            engine: {
+                                state: null
+                            }
                         }
                     })
                 } else {
