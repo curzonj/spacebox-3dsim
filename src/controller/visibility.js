@@ -46,7 +46,7 @@ extend(Class.prototype, {
 
                 var list = self.visibleSystems[obj.values.solar_system] || []
                 if (list.indexOf(obj.key) === -1)
-                    list.push(obj.key) 
+                    list.push(obj.key)
                 self.visibleSystems[obj.values.solar_system] = list
 
                 self.scanPoints[obj.key] = {
@@ -56,7 +56,9 @@ extend(Class.prototype, {
             })
 
             return Q.all(Object.keys(self.visibleSystems).map(function(solar_system) {
-                var fakeScanPoint = { solar_system: solar_system }
+                var fakeScanPoint = {
+                    solar_system: solar_system
+                }
                 return Q(worldState.scanKeysDistanceFrom(fakeScanPoint)).then(function(data) {
                     data.forEach(fn)
                 })
@@ -72,10 +74,10 @@ extend(Class.prototype, {
         }
 
         var obj,
-        privileged = this.auth.priviliged || (this.privilegedKeys[key] === true),
-        point = this.visiblePoints[key],
-        before = (point !== undefined),
-        currently = false
+            privileged = this.auth.priviliged || (this.privilegedKeys[key] === true),
+            point = this.visiblePoints[key],
+            before = (point !== undefined),
+            currently = false
 
 
         if (patch.tombstone) {
@@ -90,7 +92,7 @@ extend(Class.prototype, {
                 delete this.visiblePoints[key]
 
                 // if you saw it before, you need a tombstone regardless
-                currently = true 
+                currently = true
             }
         } else if (before) {
             // If we could see it before, what has to change so we can't
@@ -120,7 +122,7 @@ extend(Class.prototype, {
                 solar_system: obj.values.solar_system,
                 position: obj.values.position,
             }
-        } else if(before && !currently) {
+        } else if (before && !currently) {
             // The patch doesn't contain a tombstone, but they can't see
             // the object so they are going to receive a tombstone anyways
             delete this.visiblePoints[key]
@@ -138,8 +140,8 @@ extend(Class.prototype, {
     },
     updateScanPoints: function(key, patch) {
         var changes = [],
-        point = this.scanPoints[key] = this.scanPoints[key] || {},
-        oldSystem = point.solar_system
+            point = this.scanPoints[key] = this.scanPoints[key] || {},
+            oldSystem = point.solar_system
 
         debug('old scanpoint', point)
 
@@ -159,7 +161,7 @@ extend(Class.prototype, {
                     debug('testing', this.visiblePoints, 'against', this.visibleSystems)
 
                     for (var v in this.visiblePoints) {
-                        if(key !== v && !this.visibilityTest(this.visiblePoints[v])) {
+                        if (key !== v && !this.visibilityTest(this.visiblePoints[v])) {
                             delete this.visiblePoints[v]
 
                             changes.push({
@@ -183,7 +185,7 @@ extend(Class.prototype, {
                 // TODO we can't actually pas it our new scan
                 // point because that'll hit the db and be async
                 worldState.scanDistanceFrom(undefined).forEach(function(obj) {
-                    if(key != obj.key && this.visibilityTest(obj.values)) {
+                    if (key != obj.key && this.visibilityTest(obj.values)) {
                         this.visiblePoints[obj.key] = {
                             solar_system: obj.values.solar_system,
                             position: obj.values.position,
@@ -198,7 +200,7 @@ extend(Class.prototype, {
             }
 
             if (list.indexOf(key) === -1)
-                list.push(key) 
+                list.push(key)
         }
 
         return changes
@@ -216,23 +218,28 @@ extend(Class.prototype, {
 
         if (visible.before) {
             if (visible.currently) {
-                list.push({ key: key, values: 
-                          visible.privileged ? patch :
-                          this.filterProperties(key, patch) })
+                list.push({
+                    key: key,
+                    values: visible.privileged ? patch : this.filterProperties(key, patch)
+                })
             } else {
                 // TODO what effect? warp, etc
-                list.push({ key: key, values: {
-                    tombstone_cause: 'other_visibility',
-                    tombstone: true
-                } })
+                list.push({
+                    key: key,
+                    values: {
+                        tombstone_cause: 'other_visibility',
+                        tombstone: true
+                    }
+                })
             }
         } else {
             if (visible.currently) {
                 // This is the 1st time they see the object,
                 // checkVisibility had to fetch it for us
-                list.push({ key: key, values: 
-                          visible.privileged ? visible.obj.values :
-                          this.filterProperties(key, visible.obj.values) })
+                list.push({
+                    key: key,
+                    values: visible.privileged ? visible.obj.values : this.filterProperties(key, visible.obj.values)
+                })
             }
         }
 

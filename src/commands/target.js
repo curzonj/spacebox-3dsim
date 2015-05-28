@@ -21,7 +21,7 @@ module.exports = {
                 orbitTarget: msg.target
             }
         });
-    
+
     },
     shoot: function(ctx, msg, h) {
         var ship1 = worldState.get(msg.subject);

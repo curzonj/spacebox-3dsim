@@ -39,7 +39,9 @@ extend(WSController.prototype, {
         worldState.addListener(this)
 
         this.sendWorldState().then(function() {
-            this.send({type:'connectionReady'})
+            this.send({
+                type: 'connectionReady'
+            })
         }.bind(this)).done()
     },
     onConnectionClosed: function() {
@@ -55,7 +57,7 @@ extend(WSController.prototype, {
             } else {
                 console.log("ignoring command on unauthenticated socket")
             }
-        } catch(e) {
+        } catch (e) {
             console.log('error handling command', e, e.stack)
         }
     },
@@ -90,4 +92,3 @@ extend(WSController.prototype, {
         this.sendState(ts, key, patch)
     }
 })
-

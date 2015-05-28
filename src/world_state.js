@@ -12,7 +12,7 @@ var EventEmitter = require('events').EventEmitter,
     Q = require('q'),
     uuidGen = require('node-uuid')
 
-var keys_to_update_on = [ "blueprint", "account", "solar_system" ]
+var keys_to_update_on = ["blueprint", "account", "solar_system"]
 
 // WorldState is a private function so it's safe
 // to declare these here.
@@ -21,22 +21,22 @@ var listeners = []
 var dao = {
     loadIterator: function(fn) {
         return db.
-            query("select * from space_objects where tombstone = $1", [ false ]).
-            then(function(data) {
-                for (var row in data) {
-                    fn(data[row])
-                }
-            })
+        query("select * from space_objects where tombstone = $1", [false]).
+        then(function(data) {
+            for (var row in data) {
+                fn(data[row])
+            }
+        })
     },
     insert: function(uuid, values) {
         return db.
-            none("insert into space_objects (id, system_id, account_id, doc) values ($4, $1, $2, $3)", [ values.solar_system, values.account, values, uuid ])
+        none("insert into space_objects (id, system_id, account_id, doc) values ($4, $1, $2, $3)", [values.solar_system, values.account, values, uuid])
     },
     update: function(key, values) {
-        return db.none("update space_objects set doc = $2, system_id = $3 where id = $1", [ key, values, values.solar_system ])
+        return db.none("update space_objects set doc = $2, system_id = $3 where id = $1", [key, values, values.solar_system])
     },
     tombstone: function(key) {
-        return db.none("update space_objects set tombstone = $2, tombstone_at = current_timestamp where id = $1 and tombstone = false and tombstone_at is null", [ key, true ] )
+        return db.none("update space_objects set tombstone = $2, tombstone_at = current_timestamp where id = $1 and tombstone = false and tombstone_at is null", [key, true])
     }
 
 }
@@ -81,17 +81,17 @@ extend(WorldState.prototype, {
     },
 
     getAccountObjects: function(account) {
-        return db.query("select * from space_objects where account_id = $1", [ account ]).
-            then(function(data) {
-                return data.map(function(row) {
-                    // Almost like the in memory version but without the rev.
-                    // someday all of this will have to be consolidated
-                    return {
-                        key: row.id,
-                        values: row.doc
-                    }
-                })
+        return db.query("select * from space_objects where account_id = $1", [account]).
+        then(function(data) {
+            return data.map(function(row) {
+                // Almost like the in memory version but without the rev.
+                // someday all of this will have to be consolidated
+                return {
+                    key: row.id,
+                    values: row.doc
+                }
             })
+        })
     },
 
     // TODO implement the distance limit
@@ -102,8 +102,10 @@ extend(WorldState.prototype, {
             // This is easy but it won't handle when we add missiles and stuff
             // that never get added to the database. this also violates the return
             // signature of the previous if clause
-            return db.query("select id, account_id from space_objects where system_id = $1", [ obj.solar_system ]).then(function(data) {
-                return data.map(function(row) { return row.id })
+            return db.query("select id, account_id from space_objects where system_id = $1", [obj.solar_system]).then(function(data) {
+                return data.map(function(row) {
+                    return row.id
+                })
             })
         }
     },
@@ -137,11 +139,11 @@ extend(WorldState.prototype, {
         self.emit('worldStatePrepareNewObject', values)
 
         return dao.insert(uuid, values).
-            then(function() {
-                debug("added object", uuid, values)
-                self.mutateWorldState(uuid, 0, values)
-                return uuid
-            })
+        then(function() {
+            debug("added object", uuid, values)
+            self.mutateWorldState(uuid, 0, values)
+            return uuid
+        })
     },
 
     mutateWorldState: function(key, expectedRev, patch, withDebug) {
@@ -171,7 +173,7 @@ extend(WorldState.prototype, {
             }
 
             debug(data)
-            var e = new Error("revisionError expected="+expectedRev+" found="+oldRev)
+            var e = new Error("revisionError expected=" + expectedRev + " found=" + oldRev)
             e.data = data
             throw e
         }
@@ -183,7 +185,7 @@ extend(WorldState.prototype, {
         if (patch.tombstone === true && old.values.tombstone !== true) {
             dao.tombstone(key).then(function() {
                 if ((patch.tombstone_cause === 'destroyed' || patch.tombstone_cause === 'despawned') && old.values.inventory_limits !== undefined) {
-                    return C.request('tech', 'DELETE', 204, '/containers/'+key)
+                    return C.request('tech', 'DELETE', 204, '/containers/' + key)
                 }
             })
         }
@@ -195,14 +197,16 @@ extend(WorldState.prototype, {
             if (h.onWorldStateChange !== undefined) {
                 try {
                     h.onWorldStateChange(ts, key, oldRev, newRev, patch)
-                } catch(e) {
+                } catch (e) {
                     console.log("onWorldStateChange failed", h, e, e.stack)
                 }
             }
         })
 
         // TODO if this updates tombstone it needs to set tombstone_at
-        if (keys_to_update_on.some(function(i) { return patch.hasOwnProperty(i) })) {
+        if (keys_to_update_on.some(function(i) {
+                return patch.hasOwnProperty(i)
+            })) {
             return dao.update(key, old.values)
         } else {
             return Q(null)

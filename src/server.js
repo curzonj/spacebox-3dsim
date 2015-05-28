@@ -24,7 +24,7 @@ var app = express()
 var port = process.env.PORT || 5000
 
 var req_id = 0
-app.use(function (req, res, next) {
+app.use(function(req, res, next) {
     req_id = req_id + 1
     req.request_id = req_id
     req.ctx = new C.TracingContext(req_id)
@@ -32,7 +32,9 @@ app.use(function (req, res, next) {
     next()
 });
 
-morgan.token('request_id', function(req, res){ return req.ctx.id })
+morgan.token('request_id', function(req, res) {
+    return req.ctx.id
+})
 
 app.use(morgan('req_id=:request_id :method :url', {
     immediate: true
@@ -49,20 +51,20 @@ app.use(bodyParser.urlencoded({
 var server = http.createServer(app)
 
 var WebSocketServer = WebSockets.Server,
-wss = new WebSocketServer({
-    server: server,
-    verifyClient: function (info, callback) {
-        var parts = uriUtils.parse(info.req.url, true)
-        var token = parts.query.token
+    wss = new WebSocketServer({
+        server: server,
+        verifyClient: function(info, callback) {
+            var parts = uriUtils.parse(info.req.url, true)
+            var token = parts.query.token
 
-        C.http.authorize_token(token).then(function(auth) {
-            info.req.authentication = auth
-            callback(true)
-        }, function(e) {
-            callback(false)
-        })
-    }
-})
+            C.http.authorize_token(token).then(function(auth) {
+                info.req.authentication = auth
+                callback(true)
+            }, function(e) {
+                callback(false)
+            })
+        }
+    })
 
 require("./world_tickers/load_all.js")
 
@@ -73,7 +75,7 @@ var debug = require('debug')('spodb')
 app.get('/spodb', function(req, res) {
     C.http.authorize_req(req).then(function(auth) {
         var hash = {},
-        list = worldState.scanDistanceFrom()
+            list = worldState.scanDistanceFrom()
         list.forEach(function(item) {
             hash[item.key] = item
         })
@@ -104,7 +106,7 @@ app.post('/spodb/:uuid', function(req, res) {
 
 var Controller = require('./controller/ws.js')
 
-Q.all([ worldState.whenIsReady(), solarsystems.whenIsReady() ]).
+Q.all([worldState.whenIsReady(), solarsystems.whenIsReady()]).
 then(function() {
     server.listen(port)
     wss.on('connection', function(ws) {
@@ -114,4 +116,3 @@ then(function() {
     worldState.runWorldTicker()
     console.log("server ready")
 })
-

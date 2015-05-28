@@ -60,7 +60,7 @@ var funcs = {
                 // we don't share it so we can use it for this
                 // purpose. Giving it a new name just makes the
                 // other code more understandable
-                var reverse =  velocityV.negate()
+                var reverse = velocityV.negate()
 
                 behind.addVectors(reverse, position)
                 buildQuaternion(orientationQ, ship.values.facing)

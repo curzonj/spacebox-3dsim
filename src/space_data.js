@@ -22,9 +22,22 @@ module.exports = {
             health: blueprint.maxHealth,
             effects: {},
             systems: {},
-            position: msg.position || { x: 0, y: 0, z: 0 },
-            velocity: { x: 0, y: 0, z: 0 },
-            facing: { x: 0, y: 0, z: 0, w: 1 },
+            position: msg.position || {
+                x: 0,
+                y: 0,
+                z: 0
+            },
+            velocity: {
+                x: 0,
+                y: 0,
+                z: 0
+            },
+            facing: {
+                x: 0,
+                y: 0,
+                z: 0,
+                w: 1
+            },
         })
 
         // If we did it above the blueprint merge
@@ -48,7 +61,10 @@ module.exports = {
         ctx.debug('3dsim', obj)
 
         return worldState.addObject(obj).then(function(uuid) {
-            ctx.log('3dsim', "built space object", { blueprint: msg.blueprint, id: uuid })
+            ctx.log('3dsim', "built space object", {
+                blueprint: msg.blueprint,
+                id: uuid
+            })
 
             return uuid
         })

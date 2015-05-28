@@ -25,56 +25,60 @@ module.exports = {
 
         var systemId = ship.values.solar_system
         if (wormhole.values.solar_system !== systemId) {
-            throw("requested wormhole is in the wrong system")
+            throw ("requested wormhole is in the wrong system")
         } else if (wormhole.values.type !== 'wormhole') {
-            throw("that's not a wormhole")
+            throw ("that's not a wormhole")
         } else if (wormhole.values.tombstone === true) {
-            throw("that wormhole has collapsed")
+            throw ("that wormhole has collapsed")
         } else if (ship.values.engine !== undefined) {
-            throw("that vessel can't move")
+            throw ("that vessel can't move")
         }
 
         debug(wormhole)
 
-        return db.query("select * from wormholes where id = $1 and expires_at > current_timestamp", [ wormhole.values.wormhole_id ]).
-            then(function(data) {
-                if (data.length === 0)
-                    throw("that wormhole has collapsed")
-                
-                debug(data)
-                var destination_id, row = data[0],
-                    direction = wormhole.values.direction,
-                    before = Q(null)
+        return db.query("select * from wormholes where id = $1 and expires_at > current_timestamp", [wormhole.values.wormhole_id]).
+        then(function(data) {
+            if (data.length === 0)
+                throw ("that wormhole has collapsed")
 
-                if (direction === 'outbound' && row.inbound_id === null) {
-                    // this only happens on WHs outbound from this system
-                    before = worldState.addObject({
-                        type: 'wormhole',
-                        position: { x: 0, y: 0, z: 0 },
-                        solar_system: row.inbound_system,
-                        wormhole_id: row.id,
-                        destination: systemId,
-                        direction: 'inbound',
-                        expires_at: row.expires_at
-                    }).then(function(spo_id) {
-                        debug([row.id, spo_id])
-                        destination_id = spo_id
+            debug(data)
+            var destination_id, row = data[0],
+                direction = wormhole.values.direction,
+                before = Q(null)
 
-                        return db.query("update wormholes set inbound_id = $2 where id = $1", [ row.id, spo_id ])
-                    })
-                } else {
-                    destination_id = row.outbound_id
-                }
+            if (direction === 'outbound' && row.inbound_id === null) {
+                // this only happens on WHs outbound from this system
+                before = worldState.addObject({
+                    type: 'wormhole',
+                    position: {
+                        x: 0,
+                        y: 0,
+                        z: 0
+                    },
+                    solar_system: row.inbound_system,
+                    wormhole_id: row.id,
+                    destination: systemId,
+                    direction: 'inbound',
+                    expires_at: row.expires_at
+                }).then(function(spo_id) {
+                    debug([row.id, spo_id])
+                    destination_id = spo_id
 
-                return before.then(function() {
-                    var destination_spo = worldState.get(destination_id)
+                    return db.query("update wormholes set inbound_id = $2 where id = $1", [row.id, spo_id])
+                })
+            } else {
+                destination_id = row.outbound_id
+            }
 
-                    return worldState.mutateWorldState(msg.vessel, ship.rev, {
-                        solar_system: destination_spo.values.solar_system,
-                        position: destination_spo.values.position,
-                    })
+            return before.then(function() {
+                var destination_spo = worldState.get(destination_id)
+
+                return worldState.mutateWorldState(msg.vessel, ship.rev, {
+                    solar_system: destination_spo.values.solar_system,
+                    position: destination_spo.values.position,
                 })
             })
+        })
     },
     'scanWormholes': function(ctx, msg, h) {
         var shipId = msg.vessel
@@ -109,16 +113,20 @@ module.exports = {
                 if (spodb_id === null) {
                     return worldState.addObject({
                         type: 'wormhole',
-                        position: { x: 0, y: 0, z: 0 },
+                        position: {
+                            x: 0,
+                            y: 0,
+                            z: 0
+                        },
                         solar_system: systemId,
                         wormhole_id: row.id,
                         destination: destination,
                         direction: direction,
                         expires_at: row.expires_at
                     }).then(function(spo_id) {
-                        return db.query("update wormholes set "+direction+"_id = $2 where id = $1", [ row.id, spo_id ])
+                        return db.query("update wormholes set " + direction + "_id = $2 where id = $1", [row.id, spo_id])
                     })
-                } 
+                }
             }))
         })
     }

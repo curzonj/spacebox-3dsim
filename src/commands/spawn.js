@@ -44,7 +44,10 @@ function spawnVessel(ctx, msg, h, fn) {
                 uuid: uuid,
                 account: msg.account,
                 blueprint: blueprint.uuid,
-                from: msg.from || { uuid: null, slice: null },
+                from: msg.from || {
+                    uuid: null,
+                    slice: null
+                },
                 modules: msg.modules
             }, ctx)
         }).then(function() {
@@ -79,7 +82,7 @@ module.exports = {
             }, ctx)
         ], function(solar_system, blueprints, data) {
             var blueprint = blueprints[data.blueprint_id]
-        
+
             // TODO copy the position of the spawnpoint
             return space_data.spawn(ctx, uuid, blueprint, {
                 account: h.auth.account,
@@ -93,7 +96,7 @@ module.exports = {
             throw new Error("no such vessel")
         }
 
-        return C.request('tech', 'POST', 204, '/vessels/'+msg.vessel_uuid, {
+        return C.request('tech', 'POST', 204, '/vessels/' + msg.vessel_uuid, {
             account: h.auth.account,
             inventory: msg.inventory,
             slice: msg.slice
@@ -108,7 +111,7 @@ module.exports = {
         var container = worldState.get(msg.container_id)
 
         if (container === undefined)
-            throw new Error("failed to find the container to launch the vessel. container_id="+msg.container_id)
+            throw new Error("failed to find the container to launch the vessel. container_id=" + msg.container_id)
 
         if (msg.slice === undefined || msg.blueprint === undefined)
             throw new Error("missing parameters: slice or blueprint")
