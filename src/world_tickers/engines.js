@@ -339,7 +339,9 @@ var funcs = {
             return worldState.get(ship.key)
         }
 
-        worldState.scanDistanceFrom(undefined, undefined).forEach(function(ship) {
+        worldState.scanDistanceFrom(undefined, undefined).
+        filter(function(s) { return s.values.type == 'vessel' }).
+        forEach(function(ship) {
             if (ship.values.systems.engine === undefined)
                 return
 

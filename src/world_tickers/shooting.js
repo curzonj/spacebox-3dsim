@@ -4,7 +4,9 @@ var worldState = require('../world_state.js')
 
 var obj = {
     worldTick: function(tickMs) {
-        worldState.scanDistanceFrom(undefined, undefined).forEach(function(ship) {
+        worldState.scanDistanceFrom(undefined, undefined).
+        filter(function(s) { return s.values.type == 'vessel' }).
+        forEach(function(ship) {
             var system = ship.values.systems.weapon
 
             // TODO Should make a better api for handling a subsystem state
