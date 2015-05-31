@@ -13,8 +13,10 @@ var obj = {
 
                 if (target === undefined || target.values.tombstone === true) {
                     worldState.mutateWorldState(ship.key, ship.rev, {
-                        weapon: {
-                            state: null
+                        systems: {
+                            weapon: {
+                                state: null
+                            },
                         },
                         effects: {
                             shooting: -1
@@ -49,8 +51,10 @@ var obj = {
                             tombstone: true
                         })
                         worldState.mutateWorldState(ship.key, ship.rev, {
-                            weapon: {
-                                state: null
+                            systems: {
+                                weapon: {
+                                    state: null
+                                },
                             },
                             effects: {
                                 shooting: -1

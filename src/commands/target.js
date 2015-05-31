@@ -34,9 +34,11 @@ module.exports = {
 
         // TODO make sure ship1 is within range
         worldState.mutateWorldState(ship1.key, ship1.rev, {
-            weapon: {
-                state: "shoot",
-                target: msg.target,
+            systems: {
+                weapon: {
+                    state: "shoot",
+                    target: msg.target,
+                }
             }
         });
     }

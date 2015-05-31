@@ -5,7 +5,7 @@ var Q = require('q'),
 
 var worldState = require('./world_state.js')
 
-module.exports = {
+var self = module.exports = {
     spawn: function(ctx, uuid, blueprint, msg, fn) {
         ctx.log('3dsim', 'space_data.spawn', msg)
 
@@ -44,10 +44,6 @@ module.exports = {
         // would over write it
         obj.uuid = uuid
 
-        // TODO add elements to obj.systems based on modules
-        // and we need the response from tech to know what modules
-        // are installed
-
         if (blueprint.thrust !== undefined) {
             // TODO this should obviously be calculated
             obj.systems.engine = {
@@ -58,15 +54,32 @@ module.exports = {
             }
         }
 
-        ctx.debug('3dsim', obj)
+        return C.getBlueprints().then(function(blueprints) {
+            if (Array.isArray(msg.modules))
+                msg.modules.forEach(function(uuid) {
+                    var bp = blueprints[uuid],
+                        fn = self['build_'+bp.tech_type+'_system']
 
-        return worldState.addObject(obj).then(function(uuid) {
-            ctx.log('3dsim', "built space object", {
-                blueprint: msg.blueprint,
-                id: uuid
+                    if (typeof fn === 'function')
+                        obj.systems[bp.tech_type] = fn(obj.systems[bp.tech_type], bp)
+                })
+        }).then(function() {
+            ctx.debug('3dsim', obj)
+            return worldState.addObject(obj).then(function(uuid) {
+                ctx.log('3dsim', "built space object", {
+                    blueprint: msg.blueprint,
+                    id: uuid
+                })
+
+                return uuid
             })
-
-            return uuid
+        
         })
+    },
+    build_weapon_system: function(prev, bp) {
+        return {
+            state: null,
+            damage: bp.damage
+        }
     }
 }

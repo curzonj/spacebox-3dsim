@@ -9,13 +9,9 @@ var EventEmitter = require('events').EventEmitter,
     debug = npm_debug('3dsim:debug'),
     C = require('spacebox-common'),
     Q = require('q'),
+    config = require('./config.js'),
     worldState = require('./world_state.js'),
     db = require('spacebox-common-native').db
-
-var minumim_solar_systems = 100,
-    minimum_count_wormholes = 4,
-    maximum_count_wormholes = 6,
-    wormhole_lifetime = '15 seconds'
 
 var dao = {
     systems: {
@@ -27,7 +23,7 @@ var dao = {
     wormholes: {
         randomGeneratorFn: function(system_id) {
             return function() {
-                return db.query("with available_systems as (select * from system_wormholes where count < $3 and id != $1 and id not in (select inbound_system from wormholes where outbound_system = $1)) insert into wormholes (id, expires_at, outbound_system, inbound_system) select uuid_generate_v4(), current_timestamp + interval $4, $1, (select id from available_systems offset floor(random()*(select count(*) from available_systems)) limit 1) where not exists (select id from system_wormholes where id = $1 and count >= $2) returning id", [system_id, minimum_count_wormholes, maximum_count_wormholes, wormhole_lifetime])
+                return db.query("with available_systems as (select * from system_wormholes where count < $3 and id != $1 and id not in (select inbound_system from wormholes where outbound_system = $1)) insert into wormholes (id, expires_at, outbound_system, inbound_system) select uuid_generate_v4(), current_timestamp + interval $4, $1, (select id from available_systems offset floor(random()*(select count(*) from available_systems)) limit 1) where not exists (select id from system_wormholes where id = $1 and count >= $2) returning id", [system_id, config.game.minimum_count_wormholes, config.game.maximum_count_wormholes, config.game.wormhole_lifetime])
             }
         }
     }
@@ -58,7 +54,7 @@ var self = {
 
             // The generator function SQL will make sure
             // we only create the correct number of wormholes
-            for (var i = 0; i < minimum_count_wormholes; i++) {
+            for (var i = 0; i < config.game.minimum_count_wormholes; i++) {
                 q = q.then(fn);
             }
 
@@ -77,7 +73,7 @@ var self = {
     ensurePoolSize: function() {
         return db.query("select count(*)::int from solar_systems").
         then(function(data) {
-            for (var i = data[0].count; i < minumim_solar_systems; i++) {
+            for (var i = data[0].count; i < config.game.minumim_solar_systems; i++) {
                 self.createSystem().done()
             }
         })

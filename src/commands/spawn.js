@@ -10,7 +10,7 @@ var worldState = require('../world_state.js'),
     space_data = require('../space_data.js')
 
 function spawnVessel(ctx, msg, h, fn) {
-    C.getBlueprints().then(function(blueprints) {
+    return C.getBlueprints().then(function(blueprints) {
         var account,
             target,
             next = Q(null),
@@ -32,15 +32,14 @@ function spawnVessel(ctx, msg, h, fn) {
                         return worldState.cleanup(uuid)
                     })
                 } else {
-                    // Otherwise it would allow for uuid
-                    // collision attacks
+                    // Otherwise it would allow attacks
                     throw new Error("uuid collision")
                 }
             }
         }
 
         return next.then(function() {
-            return C.request('tech', 'POST', 204, '/vessels', {
+            return C.request('tech', 'POST', 200, '/vessels', {
                 uuid: uuid,
                 account: msg.account,
                 blueprint: blueprint.uuid,
@@ -50,7 +49,8 @@ function spawnVessel(ctx, msg, h, fn) {
                 },
                 modules: msg.modules
             }, ctx)
-        }).then(function() {
+        }).then(function(data) {
+            msg.modules = data.modules
             return space_data.spawn(ctx, uuid, blueprint, msg)
         })
     })
@@ -67,12 +67,6 @@ module.exports = {
     'spawnStarter': function(ctx, msg, h) {
         var uuid = uuidGen.v1()
 
-        /*
-         * return db.query("select count(*)::int from space_objects where tombstone = 'f' and account_id = $1 and doc::json->>'blueprint' = $2", [ h.auth.account, loadout.blueprint ]).
-        if (data[0].count > 0)
-                throw "this account already has a starter ship"
-        */
-
         return Q.spread([
             solarsystems.getSpawnSystemId(),
             C.getBlueprints(),
@@ -85,6 +79,7 @@ module.exports = {
 
             // TODO copy the position of the spawnpoint
             return space_data.spawn(ctx, uuid, blueprint, {
+                modules: data.modules,
                 account: h.auth.account,
                 solar_system: solar_system
             })
@@ -119,7 +114,7 @@ module.exports = {
         msg.account = h.auth.account
 
         return spawnVessel(ctx, {
-            uuid: msg.uuid, // uuid make be undefined here, spawnVessel will populate it if need be
+            uuid: msg.vessel_uuid, // uuid make be undefined here, spawnVessel will populate it if need be
             blueprint: msg.blueprint,
             account: h.auth.account,
             position: C.deepMerge(container.values.position, {}),
