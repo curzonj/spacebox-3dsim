@@ -77,9 +77,8 @@ var self = module.exports = {
         })
     },
     build_weapon_system: function(prev, bp) {
-        return {
-            state: null,
-            damage: bp.damage
-        }
+        return C.deepMerge(bp, {
+            state: null
+        })
     }
 }

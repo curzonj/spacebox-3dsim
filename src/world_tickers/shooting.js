@@ -43,6 +43,8 @@ var obj = {
                 th.buildVector(position1, ship.values.position)
                 th.buildVector(position2, target.values.position)
 
+                //console.log(system.range, position1.distanceTo(position2), position1, position2)
+
                 if (position1.distanceTo(position2) > system.range) {
                     stopShooting(ship)
                     return
