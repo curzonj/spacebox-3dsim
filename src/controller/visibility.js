@@ -129,7 +129,7 @@ extend(Class.prototype, {
         }
 
 
-        debug("visiblePoints", this.visiblePoints)
+        //debug("visiblePoints", this.visiblePoints)
 
         return {
             before: before,
@@ -143,7 +143,7 @@ extend(Class.prototype, {
             point = this.scanPoints[key] = this.scanPoints[key] || {},
             oldSystem = point.solar_system
 
-        debug('old scanpoint', point)
+        //debug('old scanpoint', point)
 
         C.deepMerge({
             position: patch.position,
@@ -153,12 +153,12 @@ extend(Class.prototype, {
         if (patch.solar_system) {
             if (oldSystem !== undefined) {
                 var oldList = this.visibleSystems[oldSystem]
-                debug('spos in old system', oldList)
+                //debug('spos in old system', oldList)
                 oldList.splice(oldList.indexOf(key), 1)
 
                 if (oldList.length === 0) {
                     delete this.visibleSystems[oldSystem]
-                    debug('testing', this.visiblePoints, 'against', this.visibleSystems)
+                    //debug('testing', this.visiblePoints, 'against', this.visibleSystems)
 
                     for (var v in this.visiblePoints) {
                         if (key !== v && !this.visibilityTest(this.visiblePoints[v])) {
@@ -175,7 +175,7 @@ extend(Class.prototype, {
                     }
                 }
 
-                debug('changes', changes)
+                //debug('changes', changes)
             }
 
             var list = this.visibleSystems[patch.solar_system]
@@ -210,7 +210,7 @@ extend(Class.prototype, {
         var list = [],
             visible = this.checkVisibility(key, patch)
 
-        debug('rewrote', key, patch, visible)
+        //debug('rewrote', key, patch, visible)
 
         if (visible.privileged) {
             list = this.updateScanPoints(key, patch)

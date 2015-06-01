@@ -9,6 +9,7 @@ var EventEmitter = require('events').EventEmitter,
     debug = npm_debug('3dsim:debug'),
     C = require('spacebox-common'),
     db = require('spacebox-common-native').db,
+    config = require('./config.js'),
     Q = require('q'),
     uuidGen = require('node-uuid')
 
@@ -221,14 +222,13 @@ extend(WorldState.prototype, {
         listeners.splice(index, 1)
     },
 
-    tickInterval: 80,
     runWorldTicker: function() {
-        setInterval(this.worldTick.bind(this), this.tickInterval)
+        setInterval(this.worldTick.bind(this), config.game.tickInterval)
     },
 
     currentTick: function() {
         var ms = new Date().getTime()
-        var tickNumber = ms - (ms % this.tickInterval)
+        var tickNumber = ms - (ms % config.game.tickInterval)
 
         return tickNumber
     },
@@ -240,7 +240,12 @@ extend(WorldState.prototype, {
 
         listeners.forEach(function(h) {
             if (h.worldTick !== undefined) {
-                h.worldTick(tickNumber)
+                try {
+                    h.worldTick(tickNumber)
+                } catch(e) {
+                    console.log("failed to process worldTick handler")
+                    console.log(e.stack)
+                }
             }
         })
     }

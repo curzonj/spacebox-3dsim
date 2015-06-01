@@ -1,4 +1,5 @@
 {
+  "tickInterval": 80,
   "minumim_solar_systems": 10,
   "minimum_count_wormholes": 4,
   "maximum_count_wormholes": 6,

@@ -3,31 +3,8 @@
 var CONST_fpErrorMargin = 0.000001
 
 var worldState = require('../world_state.js'),
+    th = require('../three_helpers.js'),
     THREE = require('three')
-
-function buildVector(v, o) {
-    if (o && o.hasOwnProperty('x') && o.hasOwnProperty('y') && o.hasOwnProperty('z')) {
-        v.set(o.x, o.y, o.z)
-    } else {
-        v.set(0, 0, 0)
-    }
-}
-
-function buildQuaternion(q, o) {
-    if (o && o.hasOwnProperty('x') && o.hasOwnProperty('y') && o.hasOwnProperty('z') && o.hasOwnProperty('w')) {
-        q.set(o.x, o.y, o.z, o.w)
-    } else {
-        q.set(0, 0, 0, 0)
-    }
-}
-
-function explodeVector(v) {
-    return {
-        x: v.x,
-        y: v.y,
-        z: v.z
-    }
-}
 
 function buildCurrentDirection(direction, orientationQ) {
     return direction.set(0, 0, 1).applyQuaternion(orientationQ).normalize()
@@ -43,6 +20,127 @@ function validAcceleration(ship, desired) {
     return Math.min(desired, max)
 }
 
+// TODO the math for maxBrakeVelocity and maxVtoTarget is
+// a little wonky and needs a good explanation
+var move_to_point = function() {
+    var velocityV = new THREE.Vector3(),
+        position = new THREE.Vector3(),
+        target = new THREE.Vector3(),
+        interceptCourse = new THREE.Vector3(),
+        brakingLookAt = new THREE.Vector3(),
+        currentDirection = new THREE.Vector3(),
+        orientationQ = new THREE.Quaternion()
+
+    return function(ship, point, targetMoving) {
+        var accel = 0,
+            system = ship.values.systems.engine,
+            maxThrust = system.maxThrust,
+            maxTheta = system.maxTheta,
+            maxThrustForMath = maxThrust * 0.95
+
+        th.buildVector(position, ship.values.position)
+        th.buildVector(target, point)
+        th.buildVector(velocityV, ship.values.velocity)
+        interceptCourse.subVectors(target, position)
+
+        th.buildQuaternion(orientationQ, ship.values.facing)
+        buildCurrentDirection(currentDirection, orientationQ)
+
+        var velocity = velocityV.length(),
+            d = interceptCourse.length(),
+            brakingTheta = 1,
+            maxBrakeVelocity = 0,
+            thetaVelocityVsTarget = 0
+
+        if (velocity > 0) {
+            var brakingOrientation = brakingLookAt.copy(velocityV).normalize().negate()
+            brakingTheta = currentDirection.angleTo(brakingOrientation)
+            brakingLookAt = brakingOrientation.add(position)
+            thetaVelocityVsTarget = velocityV.angleTo(interceptCourse)
+            
+            /// calculate what what speed we need to brake at given our current distance
+            maxBrakeVelocity = maxThrustForMath * (
+                Math.sqrt(
+                        0.25 + 
+                        ((2 * d) / maxThrustForMath)
+                ) + 0.5)
+        } else if (d < CONST_fpErrorMargin) {
+            //console.log("moveTo complete")
+            worldState.mutateWorldState(ship.key, ship.rev, {
+                systems: {
+                    engine: {
+                        state: null,
+                        lookAt: null,
+                        theta: 0,
+                        acceleration: 0
+                    }
+                }
+            })
+            return
+        }
+
+        // TODO what if we over shoot the target or the floating
+        // point math puts us off course, we need to adjust
+
+        if (brakingTheta > CONST_fpErrorMargin) {
+            // NOT aligned for breaking
+            //// calculate max velocity allowable to the target
+            var i1 = (brakingTheta / maxTheta) - 0.5 // how many turns will it take to turn to braking
+            var maxVtoTarget = maxThrustForMath * (
+                Math.sqrt(
+                    Math.pow(i1, 2) +
+                    ((2 * d) / maxThrustForMath)
+                ) - i1)
+            //((-1 * i1) + Math.sqrt(Math.pow(i1, 2) + (8 * (d / maxThrust)))) / (4 / maxThrust)
+            var theta = currentDirection.angleTo(interceptCourse) // angle in rads
+
+            // TODO allow non-max thrusts
+            if ((velocity + maxThrust) > maxVtoTarget) {
+                //console.log('going fast enough, breaking', brakingTheta, position, maxVtoTarget, velocity, d)
+                target.copy(brakingLookAt)
+            } else {
+                //console.log('accelerating', velocity, velocityV, target)
+                // we will rotate towards the target
+                if (theta < CONST_fpErrorMargin || (targetMoving && theta < Math.PI / 2)) {
+                    //we are still aligned for thrust
+                    accel = 1000
+                }
+            }
+        } else {
+            //console.log("aligned for stopping, staying that way", brakingTheta, position, maxBrakeVelocity, velocity, d)
+            // If we are aligned for breaking, don't try to look at the target
+            target.copy(brakingLookAt)
+
+            // Give ourselves some slack room on braking
+            if (velocity > maxBrakeVelocity - maxThrust) {
+                if (velocity > d) {
+                    // We don't kill the whole velocity, because
+                    // we need the velocity to close the distance
+                    // This will happen twice because we have to
+                    // kill the final bit of velocity after it moves
+                    // us to the target
+                    accel = velocity - d
+                } else {
+                    accel = 1000
+                }
+            }
+        }
+
+        // This just keeps our state clean even though
+        // the ship can't actually go faster than maxThrust
+        accel = validAcceleration(ship, accel)
+
+        worldState.mutateWorldState(ship.key, ship.rev, {
+            systems: {
+                engine: {
+                    lookAt: th.explodeVector(target),
+                    acceleration: accel
+                }
+            }
+        })
+    }
+}()
+
 var funcs = {
     handle_fullStop: function() {
         var velocityV = new THREE.Vector3(),
@@ -52,8 +150,8 @@ var funcs = {
             orientationQ = new THREE.Quaternion()
 
         return function(ship) {
-            buildVector(velocityV, ship.values.velocity)
-            buildVector(position, ship.values.position)
+            th.buildVector(velocityV, ship.values.velocity)
+            th.buildVector(position, ship.values.position)
 
             if (velocityV.length() > 0) {
                 // reverse is the same object as velocityV but
@@ -63,26 +161,30 @@ var funcs = {
                 var reverse = velocityV.negate()
 
                 behind.addVectors(reverse, position)
-                buildQuaternion(orientationQ, ship.values.facing)
+                th.buildQuaternion(orientationQ, ship.values.facing)
                 buildCurrentDirection(currentDirection, orientationQ)
 
                 // TODO replace with `move to point` logic
                 var theta = currentDirection.angleTo(reverse)
                 if (theta > CONST_fpErrorMargin) {
                     worldState.mutateWorldState(ship.key, ship.rev, {
-                        engine: {
-                            lookAt: explodeVector(behind),
-                            acceleration: 0
+                        systems: {
+                            engine: {
+                                lookAt: th.explodeVector(behind),
+                                acceleration: 0
+                            }
                         }
                     })
                 } else {
                     var velocity = velocityV.length()
 
                     worldState.mutateWorldState(ship.key, ship.rev, {
-                        engine: {
-                            // thrust by the lesser of current speed or
-                            // max thrust
-                            acceleration: validAcceleration(ship, velocity)
+                        systems: {
+                            engine: {
+                                // thrust by the lesser of current speed or
+                                // max thrust
+                                acceleration: validAcceleration(ship, velocity)
+                            }
                         }
                     })
                 }
@@ -97,14 +199,20 @@ var funcs = {
             }
         }
     }(),
+    handle_moveTo: function(ship) {
+        //var interceptPoint = new THREE.Vector3().subVectors(position, target).setLength(3).add(target)
+        move_to_point(ship, ship.values.systems.engine.moveTo, false)
+    },
     handle_orbit: function() {
         var fromTarget = new THREE.Vector3(),
             normal = new THREE.Vector3(),
             radius = new THREE.Vector3(),
             velocityV = new THREE.Vector3(),
+            velocityVNorm = new THREE.Vector3(),
             position = new THREE.Vector3(),
             target = new THREE.Vector3(),
             currentDirection = new THREE.Vector3(),
+            currentDiff = new THREE.Vector3(),
             orientationQ = new THREE.Quaternion()
 
         return function(ship) {
@@ -113,7 +221,7 @@ var funcs = {
                 worldState.mutateWorldState(ship.key, ship.rev, {
                     engine: {
                         state: "fullStop",
-                        lookAt: false,
+                        lookAt: null,
                         theta: 0,
                         acceleration: 0
                     }
@@ -122,17 +230,20 @@ var funcs = {
                 return
             }
 
-            var orbitRadius = ship.values.systems.engine.orbitRadius
-            var maxTheta = ship.values.systems.engine.maxTheta
-            var maxVelocity = ship.values.systems.engine.maxVelocity
+            var system = ship.values.systems.engine,
+                orbitRadius = system.orbitRadius,
+                maxTheta = system.maxTheta,
+                maxVelocity = system.maxVelocity
 
-            buildVector(position, ship.values.position)
-            buildVector(target, orbitTarget.values.position)
-            buildVector(velocityV, ship.values.velocity)
+            th.buildVector(position, ship.values.position)
+            th.buildVector(target, orbitTarget.values.position)
+            th.buildVector(velocityV, ship.values.velocity)
 
             fromTarget.subVectors(position, target)
             normal.crossVectors(fromTarget, velocityV)
             radius.copy(fromTarget).applyAxisAngle(normal, maxTheta).setLength(orbitRadius)
+            velocityVNorm.copy(velocityV).normalize()
+            currentDiff.copy(fromTarget).normalize().sub(velocityVNorm)
 
             var d = fromTarget.length()
             var sin90 = Math.sin(Math.PI / 2)
@@ -145,16 +256,20 @@ var funcs = {
             var theta2Limit = (Math.PI * 53 / 110)
 
             if (velocityV.length() === 0) {
-                buildQuaternion(orientationQ, ship.values.facing)
+                th.buildQuaternion(orientationQ, ship.values.facing)
                 buildCurrentDirection(currentDirection, orientationQ)
 
                 // We're not currently moving, but we are facing within
                 // 90deg of the target, lets get some velocity and then
                 // we'll correct
                 var theta = fromTarget.angleTo(currentDirection)
-                if (Math.PI / 2 < theta) {
-                    accel = 1000
+                if (isNaN(theta) || Math.PI / 2 < theta) {
+                    accel = 1000 // this gets validated later in the fn
                 }
+            } else if (currentDiff.length() === 0) {
+                // We are going exactly away from the target, get some right angle motion
+                target.copy(velocityV).applyQuaternion(orientationQ.set(0, 0.7071, 0, 0.7071))
+                accel = 1000
             } else if (isNaN(theta2) || theta2 > theta2Limit) {
                 var v2 = new THREE.Vector3().subVectors(radius, fromTarget)
 
@@ -188,15 +303,16 @@ var funcs = {
             accel = validAcceleration(ship, accel)
 
             worldState.mutateWorldState(ship.key, ship.rev, {
-                engine: {
-                    lookAt: explodeVector(target),
-                    acceleration: accel
+                systems: {
+                    engine: {
+                        lookAt: th.explodeVector(target),
+                        acceleration: accel
+                    }
                 }
             })
         }
     }(),
     handle_lookAt: function() {
-
         var target = new THREE.Vector3(),
             position = new THREE.Vector3(),
             currentDirection = new THREE.Vector3(),
@@ -205,31 +321,40 @@ var funcs = {
             rotationCrossVector = new THREE.Vector3()
 
         return function(ship) {
-            if (typeof ship.values.systems.engine.lookAt !== "object") {
+            var system = ship.values.systems.engine
+            if (typeof system.lookAt !== "object" || system.lookAt === null) {
                 return
             }
 
-            buildVector(position, ship.values.position)
-            buildVector(target, ship.values.systems.engine.lookAt)
-
-            if (target.length() === 0) {
-                console.log("lookAt value was bogus")
-                console.log(ship.values.systems.engine)
-                return
-            }
+            th.buildVector(position, ship.values.position)
+            th.buildVector(target, system.lookAt)
 
             vToTarget.subVectors(target, position).normalize()
 
-            buildQuaternion(orientationQ, ship.values.facing)
+            th.buildQuaternion(orientationQ, ship.values.facing)
             buildCurrentDirection(currentDirection, orientationQ)
             var theta = currentDirection.angleTo(vToTarget) // angle in rads
+           
+            // CONST_fpErrorMargin is not good enough here
+            // this function will constantly trigger if you don't
+            // set lookAt null, but you can't use the CONST_fpErrorMargin
+            if (theta === 0)
+                return
 
             rotationCrossVector.crossVectors(currentDirection, vToTarget).normalize()
 
+            // If we are in perfect alignment, rotate around our local X axis
+            // to kickstart things. We can't rotate around nothing, and when all
+            // directions are an option, the crossvector is zero
+            if (rotationCrossVector.length() === 0)
+                rotationCrossVector.copy(currentDirection).applyQuaternion(orientationQ.set(0, 0.7071, 0, 0.7071))
+
             worldState.mutateWorldState(ship.key, ship.rev, {
-                engine: {
-                    theta: theta,
-                    thetaAxis: explodeVector(rotationCrossVector)
+                systems: {
+                    engine: {
+                        theta: theta,
+                        thetaAxis: th.explodeVector(rotationCrossVector)
+                    }
                 }
             })
         }
@@ -242,18 +367,18 @@ var funcs = {
             orientationQ = new THREE.Quaternion()
 
         return function(ship) {
-            var maxTheta = ship.values.systems.engine.maxTheta
-            var theta = ship.values.systems.engine.theta
-            theta = Math.min(theta, maxTheta)
+            var system = ship.values.systems.engine,
+                maxTheta = system.maxTheta,
+                theta = Math.min(system.theta, maxTheta)
 
-            buildVector(thetaAxis, ship.values.systems.engine.thetaAxis)
+            th.buildVector(thetaAxis, system.thetaAxis)
             thetaAxis.normalize()
 
             if (theta <= 0 || thetaAxis.length() === 0) {
                 return
             }
 
-            buildQuaternion(orientationQ, ship.values.facing)
+            th.buildQuaternion(orientationQ, ship.values.facing)
             orientationM.makeRotationFromQuaternion(orientationQ)
 
             matrix.makeRotationAxis(thetaAxis, theta).
@@ -289,14 +414,16 @@ var funcs = {
                 return
             }
 
-            buildQuaternion(orientationQ, ship.values.facing)
+            th.buildQuaternion(orientationQ, ship.values.facing)
             buildCurrentDirection(currentDirection, orientationQ)
-            buildVector(velocityV, ship.values.velocity)
+            th.buildVector(velocityV, ship.values.velocity)
 
             thrust = Math.min(thrust, maxThrust)
             thrustVector.copy(currentDirection).multiplyScalar(thrust)
 
+
             velocityV.add(thrustVector)
+            //console.log("applying", thrust, "along", currentDirection, "to", ship.values.velocity, "resulting", velocityV, velocityV.length())
 
             if (velocityV.length() < CONST_fpErrorMargin) {
                 console.log("velocity too small, stopping")
@@ -304,7 +431,7 @@ var funcs = {
             }
 
             worldState.mutateWorldState(ship.key, ship.rev, {
-                velocity: explodeVector(velocityV)
+                velocity: th.explodeVector(velocityV)
             })
         }
     }(),
@@ -315,30 +442,25 @@ var funcs = {
         var position = new THREE.Vector3()
 
         return function(ship) {
-            buildVector(velocityV, ship.values.velocity)
+            th.buildVector(velocityV, ship.values.velocity)
 
             if (velocityV.length() > 0) {
                 if (velocityV.length() > ship.values.systems.engine.maxVelocity) {
                     velocityV.setLength(ship.values.systems.engine.maxVelocity)
                 }
 
-                buildVector(position, ship.values.position)
+                th.buildVector(position, ship.values.position)
                 position.add(velocityV)
 
                 worldState.mutateWorldState(ship.key, ship.rev, {
-                    velocity: explodeVector(velocityV),
-                    position: explodeVector(position)
+                    velocity: th.explodeVector(velocityV),
+                    position: th.explodeVector(position)
                 })
             }
         }
     }(),
     worldTick: function(tickMs) {
-        function process(cmd, ship) {
-            funcs["handle_" + cmd]()
-
-            return worldState.get(ship.key)
-        }
-
+        //console.log('starting', tickMs)
         worldState.scanDistanceFrom(undefined, undefined).
         filter(function(s) { return s.values.type == 'vessel' }).
         forEach(function(ship) {
@@ -372,6 +494,7 @@ var funcs = {
                 ship = worldState.get(ship.key)
             })
         }, this)
+        //console.log('done', tickMs)
     }
 }
 

@@ -2,38 +2,53 @@
 
 var worldState = require('../world_state.js')
 
+function validateSubjectTarget(subject, target, h) {
+    if (subject === undefined || subject.values.account !== h.auth.account) {
+        throw new Error("no such subject")
+    } else if (target === undefined) {
+        throw new Error("no such target")
+    } else if (target.values.solar_system !== subject.values.solar_system) {
+        throw new Error("")
+    }
+}
+
 module.exports = {
-    // TODO make sure they are allowed to give commands to ship1
-    // TODO validate the target
-    orbit: function(ctx, msg, h) {
-        var ship1 = worldState.get(msg.subject);
-
-        if (ship1 === undefined) {
+    move_to: function(ctx, msg, h) {
+        var ship = worldState.get(msg.subject);
+        if (ship === undefined || ship.values.account !== h.auth.account)
             throw new Error("no such subject")
-        } else if (worldState.get(msg.target) === undefined) {
-            throw new Error("no such target")
-        }
 
-        worldState.mutateWorldState(ship1.key, ship1.rev, {
-            engine: {
-                state: "orbit",
-                orbitRadius: 1,
-                orbitTarget: msg.target
+        worldState.mutateWorldState(ship.key, ship.rev, {
+            systems: {
+                engine: {
+                    state: "moveTo",
+                    moveTo: msg.target
+                }
             }
         });
-
     },
+    orbit: function(ctx, msg, h) {
+        var ship = worldState.get(msg.subject);
+        var target = worldState.get(msg.target)
+        validateSubjectTarget(ship, target, h)
+
+        worldState.mutateWorldState(ship.key, ship.rev, {
+            systems: {
+                engine: {
+                    state: "orbit",
+                    orbitRadius: msg.radius || 1,
+                    orbitTarget: msg.target
+                }
+            }
+        });
+    },
+
     shoot: function(ctx, msg, h) {
-        var ship1 = worldState.get(msg.subject);
+        var ship = worldState.get(msg.subject)
+        var target = worldState.get(msg.target)
+        validateSubjectTarget(ship, target, h)
 
-        if (ship1 === undefined) {
-            throw new Error("no such subject")
-        } else if (worldState.get(msg.target) === undefined) {
-            throw new Error("no such target")
-        }
-
-        // TODO make sure ship1 is within range
-        worldState.mutateWorldState(ship1.key, ship1.rev, {
+        worldState.mutateWorldState(ship.key, ship.rev, {
             systems: {
                 weapon: {
                     state: "shoot",
