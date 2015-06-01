@@ -77,7 +77,6 @@ module.exports = {
         ], function(solar_system, blueprints, data) {
             var blueprint = blueprints[data.blueprint_id]
 
-            // TODO copy the position of the spawnpoint
             return space_data.spawn(ctx, uuid, blueprint, {
                 modules: data.modules,
                 account: h.auth.account,
@@ -114,7 +113,7 @@ module.exports = {
         msg.account = h.auth.account
 
         return spawnVessel(ctx, {
-            uuid: msg.vessel_uuid, // uuid make be undefined here, spawnVessel will populate it if need be
+            uuid: msg.vessel_uuid, // uuid may be undefined here, spawnVessel will populate it if need be
             blueprint: msg.blueprint,
             account: h.auth.account,
             position: C.deepMerge(container.values.position, {}),
