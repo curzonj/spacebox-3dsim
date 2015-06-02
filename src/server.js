@@ -11,7 +11,8 @@ var WebSockets = require("ws"),
     Q = require('q'),
     uriUtils = require('url'),
     C = require('spacebox-common'),
-    space_data = require('./space_data.js')
+    space_data = require('./space_data.js'),
+    config = require('./config.js')
 
 Q.longStackSupport = true
 
@@ -72,16 +73,8 @@ var worldState = require('./world_state.js'),
     solarsystems = require('./solar_systems.js')
 
 var debug = require('debug')('spodb')
-app.get('/spodb', function(req, res) {
-    C.http.authorize_req(req).then(function(auth) {
-        var hash = {},
-            list = worldState.scanDistanceFrom()
-        list.forEach(function(item) {
-            hash[item.key] = item
-        })
-
-        res.send(hash)
-    }).fail(C.http.errHandler(req, res, console.log)).done()
+app.get('/game_config', function(req, res) {
+    res.send(config.game)
 })
 
 // TODO what happens to a structure's health when it's
