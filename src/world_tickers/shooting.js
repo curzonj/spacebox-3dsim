@@ -1,7 +1,7 @@
 'use strict';
 
 var worldState = require('../world_state.js'),
-    th = require('../three_helpers.js'),
+    th = require('spacebox-common/src/three_helpers.js'),
     THREE = require('three')
 
 function stopShooting(ship) {

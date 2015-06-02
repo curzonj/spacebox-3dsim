@@ -13,10 +13,24 @@ function validateSubjectTarget(subject, target, h) {
 }
 
 module.exports = {
-    move_to: function(ctx, msg, h) {
-        var ship = worldState.get(msg.subject);
+    full_stop: function(ctx, msg, h) {
+        var ship = worldState.get(msg.vessel);
         if (ship === undefined || ship.values.account !== h.auth.account)
-            throw new Error("no such subject")
+            throw new Error("no such vessel")
+
+        worldState.mutateWorldState(ship.key, ship.rev, {
+            systems: {
+                engine: {
+                    state: "fullStop"
+                }
+            }
+        });
+    
+    },
+    move_to: function(ctx, msg, h) {
+        var ship = worldState.get(msg.vessel);
+        if (ship === undefined || ship.values.account !== h.auth.account)
+            throw new Error("no such vessel")
 
         worldState.mutateWorldState(ship.key, ship.rev, {
             systems: {
@@ -28,7 +42,7 @@ module.exports = {
         });
     },
     orbit: function(ctx, msg, h) {
-        var ship = worldState.get(msg.subject);
+        var ship = worldState.get(msg.vessel);
         var target = worldState.get(msg.target)
         validateSubjectTarget(ship, target, h)
 
@@ -44,7 +58,7 @@ module.exports = {
     },
 
     shoot: function(ctx, msg, h) {
-        var ship = worldState.get(msg.subject)
+        var ship = worldState.get(msg.vessel)
         var target = worldState.get(msg.target)
         validateSubjectTarget(ship, target, h)
 

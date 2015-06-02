@@ -6,6 +6,21 @@ var Q = require('q'),
 var worldState = require('./world_state.js')
 
 var self = module.exports = {
+    random_position: function(l, o) {
+        if (o === undefined)
+            o = { x: 0, y: 0, z: 0 }
+
+        function rand() {
+            var base = Math.floor((Math.random() - 0.5) * 2 * (l.max - l.min))
+            if (base > 0) {
+                return base + l.min
+            } else {
+                return base - l.min
+            }
+        }
+
+        return { x: o.x + rand(), y: o.y+ rand(), z: o.z+ rand() }
+    },
     spawn: function(ctx, uuid, blueprint, msg, fn) {
         ctx.log('3dsim', 'space_data.spawn', msg)
 

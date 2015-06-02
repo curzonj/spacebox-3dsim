@@ -1,6 +1,7 @@
 'use strict';
 
 var Q = require('q'),
+    THREE = require('three'),
     uuidGen = require('node-uuid'),
     npm_debug = require('debug'),
     log = npm_debug('3dsim:info'),
@@ -10,7 +11,14 @@ var Q = require('q'),
     C = require('spacebox-common')
 
 var worldState = require('../world_state.js'),
+    space_data = require('../space_data.js'),
+    config = require('../config.js'),
+    th = require('spacebox-common/src/three_helpers.js'),
     solarsystems = require('../solar_systems.js')
+
+// NodeJS is single threaded so this is instead of object pooling
+var position1 = new THREE.Vector3()
+var position2 = new THREE.Vector3()
 
 module.exports = {
     'jumpWormhole': function(ctx, msg, h) {
@@ -30,9 +38,17 @@ module.exports = {
             throw ("that's not a wormhole")
         } else if (wormhole.values.tombstone === true) {
             throw ("that wormhole has collapsed")
-        } else if (ship.values.engine !== undefined) {
+        } else if (ship.values.systems.engine === undefined) {
             throw ("that vessel can't move")
         }
+
+        th.buildVector(position1, ship.values.position)
+        th.buildVector(position2, wormhole.values.position)
+
+        //console.log(system.range, position1.distanceTo(position2), position1, position2)
+
+        if (position1.distanceTo(position2) > config.game.wormhole_jump_range)
+            throw ("You are not within range, "+config.game.wormhole_jump_range)
 
         debug(wormhole)
 
@@ -50,11 +66,7 @@ module.exports = {
                 // this only happens on WHs outbound from this system
                 before = worldState.addObject({
                     type: 'wormhole',
-                    position: {
-                        x: 0,
-                        y: 0,
-                        z: 0
-                    },
+                    position: space_data.random_position(config.game.wormhole_range),
                     solar_system: row.inbound_system,
                     wormhole_id: row.id,
                     destination: systemId,
@@ -73,9 +85,20 @@ module.exports = {
             return before.then(function() {
                 var destination_spo = worldState.get(destination_id)
 
+                // When you jump through the wormhole you're not moving
+                // when you get there
                 return worldState.mutateWorldState(msg.vessel, ship.rev, {
                     solar_system: destination_spo.values.solar_system,
                     position: destination_spo.values.position,
+                    velocity: { x: 0, y: 0, z: 0 },
+                    systems: {
+                        engine: {
+                            state: null,
+                            lookAt: null,
+                            theta: 0,
+                            acceleration: 0
+                        }
+                    }
                 })
             })
         })
@@ -113,11 +136,7 @@ module.exports = {
                 if (spodb_id === null) {
                     return worldState.addObject({
                         type: 'wormhole',
-                        position: {
-                            x: 0,
-                            y: 0,
-                            z: 0
-                        },
+                        position: space_data.random_position(config.game.wormhole_range),
                         solar_system: systemId,
                         wormhole_id: row.id,
                         destination: destination,

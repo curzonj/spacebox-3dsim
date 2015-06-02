@@ -3,7 +3,7 @@
 var CONST_fpErrorMargin = 0.000001
 
 var worldState = require('../world_state.js'),
-    th = require('../three_helpers.js'),
+    th = require('spacebox-common/src/three_helpers.js'),
     THREE = require('three')
 
 function buildCurrentDirection(direction, orientationQ) {
@@ -191,9 +191,13 @@ var funcs = {
 
             } else {
                 worldState.mutateWorldState(ship.key, ship.rev, {
-                    engine: {
-                        state: null,
-                        acceleration: 0
+                    systems: {
+                        engine: {
+                            state: null,
+                            lookAt: null,
+                            theta: 0,
+                            acceleration: 0
+                        }
                     }
                 })
             }

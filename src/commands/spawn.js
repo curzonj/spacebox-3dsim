@@ -1,13 +1,20 @@
 'use strict';
 
 var Q = require('q'),
+    THREE = require('three'),
     uuidGen = require('node-uuid'),
     db = require('spacebox-common-native').db,
     C = require('spacebox-common')
 
 var worldState = require('../world_state.js'),
     solarsystems = require('../solar_systems.js'),
+    th = require('spacebox-common/src/three_helpers.js'),
+    config = require('../config.js'),
     space_data = require('../space_data.js')
+
+// NodeJS is single threaded so this is instead of object pooling
+var position1 = new THREE.Vector3()
+var position2 = new THREE.Vector3()
 
 function spawnVessel(ctx, msg, h, fn) {
     return C.getBlueprints().then(function(blueprints) {
@@ -80,22 +87,33 @@ module.exports = {
             return space_data.spawn(ctx, uuid, blueprint, {
                 modules: data.modules,
                 account: h.auth.account,
+                position: space_data.random_position(config.game.spawn_range),
                 solar_system: solar_system
             })
         })
     },
     'dock': function(ctx, msg, h) {
-        var target = worldState.get(msg.vessel_uuid)
-        if (target === undefined || target.values.tombstone === true) {
+        var vessel = worldState.get(msg.vessel_uuid)
+        var container = worldState.get(msg.container)
+
+        if (vessel === undefined || vessel.values.tombstone === true) {
             throw new Error("no such vessel")
+        } else if (container === undefined || container.values.tombstone === true) {
+            throw new Error("no such container")
         }
+
+        th.buildVector(position1, vessel.values.position)
+        th.buildVector(position2, container.values.position)
+
+        if (position1.distanceTo(position2) > config.game.docking_range)
+            throw ("You are not within range, "+config.game.docking_range)
 
         return C.request('tech', 'POST', 204, '/vessels/' + msg.vessel_uuid, {
             account: h.auth.account,
-            inventory: msg.inventory,
+            inventory: msg.container,
             slice: msg.slice
         }, ctx).then(function() {
-            return worldState.mutateWorldState(target.key, target.rev, {
+            return worldState.mutateWorldState(vessel.key, vessel.rev, {
                 tombstone_cause: 'docking',
                 tombstone: true
             })

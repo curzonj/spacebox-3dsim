@@ -3,6 +3,9 @@
   "minumim_solar_systems": 10,
   "minimum_count_wormholes": 4,
   "maximum_count_wormholes": 6,
-  "wormhole_lifetime": "15 seconds"
-
+  "wormhole_lifetime": "15 minutes",
+  "wormhole_jump_range": 5,
+  "wormhole_range": { "min": 10, "max": 20 },
+  "spawn_range": { "min": 1, "max": 2 },
+  "docking_range": 3
 }
