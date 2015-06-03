@@ -10,6 +10,7 @@ var EventEmitter = require('events').EventEmitter,
     C = require('spacebox-common'),
     db = require('spacebox-common-native').db,
     config = require('./config.js'),
+    stats = require('./stats.js'),
     Q = require('q'),
     uuidGen = require('node-uuid')
 
@@ -223,20 +224,22 @@ extend(WorldState.prototype, {
     },
 
     runWorldTicker: function() {
-        setInterval(this.worldTick.bind(this), config.game.tickInterval)
+        this.worldTickBound = this.worldTick.bind(this)
+        this._currentTick = new Date().getTime()
+        setTimeout(this.worldTickBound, config.game.tickInterval)
     },
 
     currentTick: function() {
-        var ms = new Date().getTime()
-        var tickNumber = ms - (ms % config.game.tickInterval)
-
-        return tickNumber
+        return this._currentTick
     },
 
     worldTick: function() {
-        // TODO the tickNumber should be synced with
-        // worldstate mutations
-        var tickNumber = this.currentTick()
+        var startedAt = new Date().getTime()
+        var tickNumber = this._currentTick + config.game.tickInterval
+        var skew = startedAt - tickNumber
+
+        this._currentTick = tickNumber
+        stats.worldTickSkew.update(skew)
 
         listeners.forEach(function(h) {
             if (h.worldTick !== undefined) {
@@ -248,6 +251,15 @@ extend(WorldState.prototype, {
                 }
             }
         })
+
+        var now = new Date().getTime()
+        stats.worldTick.update(now - startedAt)
+        var delay = tickNumber + config.game.tickInterval - now
+        if (delay < 0)
+            delay = 0
+
+        stats.worldTickDelay.update(delay)
+        setTimeout(this.worldTickBound, delay)
     }
 })
 

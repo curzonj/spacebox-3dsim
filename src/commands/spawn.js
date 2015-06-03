@@ -122,6 +122,10 @@ module.exports = {
     'deploy': function(ctx, msg, h) {
         var container = worldState.get(msg.container_id)
 
+        var num_vessels = Object.keys(h.visibility.privilegedKeys).length
+        if (num_vessels >= config.game.maximum_vessels)
+            throw new Error("already have the maximum number of deployed vessels")
+
         if (container === undefined)
             throw new Error("failed to find the container to launch the vessel. container_id=" + msg.container_id)
 

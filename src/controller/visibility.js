@@ -20,6 +20,9 @@ var Class = module.exports = function(auth) {
     this.auth = auth
 
     this.visiblePoints = {}
+    // spawn also depends on privilegedKeys to know
+    // how many vessels the account has out so it can
+    // limit them
     this.privilegedKeys = {}
     this.scanPoints = {}
     this.visibleSystems = {}
@@ -150,7 +153,7 @@ extend(Class.prototype, {
             solar_system: patch.solar_system
         }, point)
 
-        if (patch.solar_system) {
+        if (patch.solar_system !== undefined || patch.tombstone === true) {
             if (oldSystem !== undefined) {
                 var oldList = this.visibleSystems[oldSystem]
                 //debug('spos in old system', oldList)

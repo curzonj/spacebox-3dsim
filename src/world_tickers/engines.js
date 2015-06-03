@@ -3,6 +3,7 @@
 var CONST_fpErrorMargin = 0.000001
 
 var worldState = require('../world_state.js'),
+    config = require('../config.js'),
     th = require('spacebox-common/src/three_helpers.js'),
     THREE = require('three')
 
@@ -18,6 +19,28 @@ function validAcceleration(ship, desired) {
     }
 
     return Math.min(desired, max)
+}
+
+function filterUnchangedVectors(spo, patch) {
+    Object.keys(patch).forEach(function(k) {
+        var c = spo.values[k],
+            n = patch[k]
+        if (c !== undefined &&
+            c.x === n.x &&
+            c.y === n.y &&
+            c.z === n.z)
+            delete patch[k]
+    })
+
+    return patch
+}
+
+function buildVectorBucket(v, bucket) {
+    return {
+        x: Math.floor(v.x / bucket) * bucket,
+        y: Math.floor(v.y / bucket) * bucket,
+        z: Math.floor(v.z / bucket) * bucket
+    }
 }
 
 // TODO the math for maxBrakeVelocity and maxVtoTarget is
@@ -456,10 +479,12 @@ var funcs = {
                 th.buildVector(position, ship.values.position)
                 position.add(velocityV)
 
-                worldState.mutateWorldState(ship.key, ship.rev, {
-                    velocity: th.explodeVector(velocityV),
-                    position: th.explodeVector(position)
-                })
+                worldState.mutateWorldState(ship.key, ship.rev, 
+                    filterUnchangedVectors(ship, {
+                        velocity: th.explodeVector(velocityV),
+                        position_bucket: buildVectorBucket(position, config.game.position_bucket),
+                        position: th.explodeVector(position)
+                    }))
             }
         }
     }(),

@@ -12,6 +12,7 @@ var WebSockets = require("ws"),
     uriUtils = require('url'),
     C = require('spacebox-common'),
     space_data = require('./space_data.js'),
+    stats = require('./stats.js'),
     config = require('./config.js')
 
 Q.longStackSupport = true
@@ -73,8 +74,11 @@ var worldState = require('./world_state.js'),
     solarsystems = require('./solar_systems.js')
 
 var debug = require('debug')('spodb')
-app.get('/game_config', function(req, res) {
-    res.send(config.game)
+app.get('/specs', function(req, res) {
+    res.send({
+        stats: stats.stats,
+        config: config.game
+    })
 })
 
 // TODO what happens to a structure's health when it's

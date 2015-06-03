@@ -56,6 +56,12 @@ module.exports = {
             if (processors.hasOwnProperty(cmd) && typeof processors[cmd] == 'function') {
                 Q(processors[cmd](ctx, msg, info)).fail(function(e) {
                     send_error(ctx, e, info)
+                }).then(function(result) {
+                    info.send({
+                        type: "result",
+                        request_id: request_id,
+                        result: result
+                    })
                 }).done()
             } else {
                 throw ("invalid command: " + cmd);

@@ -8,6 +8,7 @@
   "dependencies": {
     "spacebox-common": "curzonj/spacebox-nodejs-common",
     "spacebox-common-native": "curzonj/spacebox-nodejs-common-native",
+    "measured": "latest",
     "express": "latest",
     "ws": "latest",
     "cors": "latest",
