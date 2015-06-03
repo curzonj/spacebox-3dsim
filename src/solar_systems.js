@@ -98,7 +98,7 @@ function checkWormholeTTL() {
                 if (obj === undefined)
                     return
 
-                return worldState.mutateWorldState(obj.key, obj.rev, {
+                return worldState.queueChangeIn(obj.uuid, {
                     tombstone: true
                 }).then(function() {
                     console.log("cleaning up wormhole", row.id)

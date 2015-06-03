@@ -14,18 +14,11 @@ var worldState = require('../world_state.js'),
 
 module.exports = {
     "resetAccount": function(ctx, msg, h) {
-        var data = worldState.getHack()
-
         return db.query("select * from space_objects where tombstone = 'f' and account_id = $1", h.auth.account).then(function(data) {
             return Q.all(data.map(function(row) {
-                ctx.debug('3dsim', row)
-                var target = worldState.get(row.id)
-                ctx.debug('3dsim', target)
-                ctx.debug('3dsim', worldState.getHack())
-
                 // World state will notify inventory which will delete
                 // both containers and facilities
-                return worldState.mutateWorldState(target.key, target.rev, {
+                return worldState.queueChangeIn(row.id, {
                     tombstone_cause: 'despawned',
                     tombstone: true
                 })

@@ -34,7 +34,7 @@ function spawnVessel(ctx, msg, h, fn) {
             target = worldState.get(uuid)
 
             if (target !== undefined) {
-                if (target.values.account === account) {
+                if (target.account === account) {
                     next = next.then(function() {
                         return worldState.cleanup(uuid)
                     })
@@ -96,14 +96,14 @@ module.exports = {
         var vessel = worldState.get(msg.vessel_uuid)
         var container = worldState.get(msg.container)
 
-        if (vessel === undefined || vessel.values.tombstone === true) {
+        if (vessel === undefined || vessel.tombstone === true) {
             throw new Error("no such vessel")
-        } else if (container === undefined || container.values.tombstone === true) {
+        } else if (container === undefined || container.tombstone === true) {
             throw new Error("no such container")
         }
 
-        th.buildVector(position1, vessel.values.position)
-        th.buildVector(position2, container.values.position)
+        th.buildVector(position1, vessel.position)
+        th.buildVector(position2, container.position)
 
         if (position1.distanceTo(position2) > config.game.docking_range)
             throw ("You are not within range, "+config.game.docking_range)
@@ -113,7 +113,7 @@ module.exports = {
             inventory: msg.container,
             slice: msg.slice
         }, ctx).then(function() {
-            return worldState.mutateWorldState(vessel.key, vessel.rev, {
+            return worldState.queueChangeIn(vessel.uuid, {
                 tombstone_cause: 'docking',
                 tombstone: true
             })
@@ -138,8 +138,8 @@ module.exports = {
             uuid: msg.vessel_uuid, // uuid may be undefined here, spawnVessel will populate it if need be
             blueprint: msg.blueprint,
             account: h.auth.account,
-            position: C.deepMerge(container.values.position, {}),
-            solar_system: container.values.solar_system,
+            position: C.deepMerge(container.position, {}),
+            solar_system: container.solar_system,
             from: {
                 uuid: msg.container_id,
                 slice: msg.slice

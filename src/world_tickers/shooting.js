@@ -5,7 +5,7 @@ var worldState = require('../world_state.js'),
     THREE = require('three')
 
 function stopShooting(ship) {
-    worldState.mutateWorldState(ship.key, ship.rev, {
+    worldState.queueChangeOut(ship.uuid, {
         systems: {
             weapon: {
                 state: null
@@ -24,24 +24,24 @@ var position2 = new THREE.Vector3()
 var obj = {
     worldTick: function(tickMs) {
         worldState.scanDistanceFrom(undefined, undefined).
-        filter(function(s) { return s.values.type == 'vessel' }).
+        filter(function(s) { return s.type == 'vessel' }).
         forEach(function(ship) {
-            var system = ship.values.systems.weapon
+            var system = ship.systems.weapon
 
             // TODO Should make a better api for handling a subsystem state
             if (system && system.state == "shoot") {
                 var target = worldState.get(system.target)
 
                 if (target === undefined ||
-                    target.values.tombstone === true ||
-                    target.values.solar_system !== ship.values.solar_system
+                    target.tombstone === true ||
+                    target.solar_system !== ship.solar_system
                 ) {
                     stopShooting(ship)
                     return
                 }
 
-                th.buildVector(position1, ship.values.position)
-                th.buildVector(position2, target.values.position)
+                th.buildVector(position1, ship.position)
+                th.buildVector(position2, target.position)
 
                 //console.log(system.range, position1.distanceTo(position2), position1, position2)
 
@@ -50,22 +50,22 @@ var obj = {
                     return
                 }
 
-                if (target.values.health > system.damage) {
-                    var health = target.values.health - system.damage
-                    worldState.mutateWorldState(target.key, target.rev, {
+                if (target.health > system.damage) {
+                    var health = target.health - system.damage
+                    worldState.queueChangeOut(target.uuid, {
                         health: health,
-                        health_pct: health / target.values.maxHealth
+                        health_pct: health / target.maxHealth
                     })
 
-                    if (ship.values.effects.shooting !== target.key) {
-                        worldState.mutateWorldState(ship.key, ship.rev, {
+                    if (ship.effects.shooting !== target.uuid) {
+                        worldState.queueChangeOut(ship.uuid, {
                             effects: {
-                                shooting: target.key
+                                shooting: target.uuid
                             }
                         })
                     }
                 } else {
-                    worldState.mutateWorldState(target.key, target.rev, {
+                    worldState.queueChangeOut(target.uuid, {
                         health: 0,
                         health_pct: 0,
                         effects: {
@@ -82,4 +82,4 @@ var obj = {
     }
 }
 
-worldState.addListener(obj)
+worldState.onWorldTick(obj.worldTick)

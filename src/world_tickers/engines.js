@@ -4,7 +4,9 @@ var CONST_fpErrorMargin = 0.000001
 
 var worldState = require('../world_state.js'),
     config = require('../config.js'),
+    space_data = require('../space_data.js'),
     th = require('spacebox-common/src/three_helpers.js'),
+    C = require('spacebox-common'),
     THREE = require('three')
 
 function buildCurrentDirection(direction, orientationQ) {
@@ -12,7 +14,7 @@ function buildCurrentDirection(direction, orientationQ) {
 }
 
 function validAcceleration(ship, desired) {
-    var max = ship.values.systems.engine.maxThrust
+    var max = ship.systems.engine.maxThrust
 
     if (desired === undefined || isNaN(desired)) {
         desired = max
@@ -23,7 +25,7 @@ function validAcceleration(ship, desired) {
 
 function filterUnchangedVectors(spo, patch) {
     Object.keys(patch).forEach(function(k) {
-        var c = spo.values[k],
+        var c = spo[k],
             n = patch[k]
         if (c !== undefined &&
             c.x === n.x &&
@@ -33,14 +35,6 @@ function filterUnchangedVectors(spo, patch) {
     })
 
     return patch
-}
-
-function buildVectorBucket(v, bucket) {
-    return {
-        x: Math.floor(v.x / bucket) * bucket,
-        y: Math.floor(v.y / bucket) * bucket,
-        z: Math.floor(v.z / bucket) * bucket
-    }
 }
 
 // TODO the math for maxBrakeVelocity and maxVtoTarget is
@@ -56,17 +50,17 @@ var move_to_point = function() {
 
     return function(ship, point, targetMoving) {
         var accel = 0,
-            system = ship.values.systems.engine,
+            system = ship.systems.engine,
             maxThrust = system.maxThrust,
             maxTheta = system.maxTheta,
             maxThrustForMath = maxThrust * 0.95
 
-        th.buildVector(position, ship.values.position)
+        th.buildVector(position, ship.position)
         th.buildVector(target, point)
-        th.buildVector(velocityV, ship.values.velocity)
+        th.buildVector(velocityV, ship.velocity)
         interceptCourse.subVectors(target, position)
 
-        th.buildQuaternion(orientationQ, ship.values.facing)
+        th.buildQuaternion(orientationQ, ship.facing)
         buildCurrentDirection(currentDirection, orientationQ)
 
         var velocity = velocityV.length(),
@@ -89,7 +83,7 @@ var move_to_point = function() {
                 ) + 0.5)
         } else if (d < CONST_fpErrorMargin) {
             //console.log("moveTo complete")
-            worldState.mutateWorldState(ship.key, ship.rev, {
+            return {
                 systems: {
                     engine: {
                         state: null,
@@ -98,8 +92,7 @@ var move_to_point = function() {
                         acceleration: 0
                     }
                 }
-            })
-            return
+            }
         }
 
         // TODO what if we over shoot the target or the floating
@@ -153,14 +146,14 @@ var move_to_point = function() {
         // the ship can't actually go faster than maxThrust
         accel = validAcceleration(ship, accel)
 
-        worldState.mutateWorldState(ship.key, ship.rev, {
+        return {
             systems: {
                 engine: {
                     lookAt: th.explodeVector(target),
                     acceleration: accel
                 }
             }
-        })
+        }
     }
 }()
 
@@ -173,8 +166,8 @@ var funcs = {
             orientationQ = new THREE.Quaternion()
 
         return function(ship) {
-            th.buildVector(velocityV, ship.values.velocity)
-            th.buildVector(position, ship.values.position)
+            th.buildVector(velocityV, ship.velocity)
+            th.buildVector(position, ship.position)
 
             if (velocityV.length() > 0) {
                 // reverse is the same object as velocityV but
@@ -184,24 +177,24 @@ var funcs = {
                 var reverse = velocityV.negate()
 
                 behind.addVectors(reverse, position)
-                th.buildQuaternion(orientationQ, ship.values.facing)
+                th.buildQuaternion(orientationQ, ship.facing)
                 buildCurrentDirection(currentDirection, orientationQ)
 
                 // TODO replace with `move to point` logic
                 var theta = currentDirection.angleTo(reverse)
                 if (theta > CONST_fpErrorMargin) {
-                    worldState.mutateWorldState(ship.key, ship.rev, {
+                    return {
                         systems: {
                             engine: {
                                 lookAt: th.explodeVector(behind),
                                 acceleration: 0
                             }
                         }
-                    })
+                    }
                 } else {
                     var velocity = velocityV.length()
 
-                    worldState.mutateWorldState(ship.key, ship.rev, {
+                    return {
                         systems: {
                             engine: {
                                 // thrust by the lesser of current speed or
@@ -209,11 +202,11 @@ var funcs = {
                                 acceleration: validAcceleration(ship, velocity)
                             }
                         }
-                    })
+                    }
                 }
 
             } else {
-                worldState.mutateWorldState(ship.key, ship.rev, {
+                return {
                     systems: {
                         engine: {
                             state: null,
@@ -222,13 +215,13 @@ var funcs = {
                             acceleration: 0
                         }
                     }
-                })
+                }
             }
         }
     }(),
     handle_moveTo: function(ship) {
         //var interceptPoint = new THREE.Vector3().subVectors(position, target).setLength(3).add(target)
-        move_to_point(ship, ship.values.systems.engine.moveTo, false)
+        move_to_point(ship, ship.systems.engine.moveTo, false)
     },
     handle_orbit: function() {
         var fromTarget = new THREE.Vector3(),
@@ -243,28 +236,28 @@ var funcs = {
             orientationQ = new THREE.Quaternion()
 
         return function(ship) {
-            var orbitTarget = worldState.get(ship.values.systems.engine.orbitTarget)
-            if (orbitTarget === undefined || orbitTarget.values.tombstone === true) {
-                worldState.mutateWorldState(ship.key, ship.rev, {
-                    engine: {
-                        state: "fullStop",
-                        lookAt: null,
-                        theta: 0,
-                        acceleration: 0
+            var orbitTarget = worldState.get(ship.systems.engine.orbitTarget)
+            if (orbitTarget === undefined || orbitTarget.tombstone === true) {
+                return {
+                    systems: {
+                        engine: {
+                            state: "fullStop",
+                            lookAt: null,
+                            theta: 0,
+                            acceleration: 0
+                        }
                     }
-                })
-
-                return
+                }
             }
 
-            var system = ship.values.systems.engine,
+            var system = ship.systems.engine,
                 orbitRadius = system.orbitRadius,
                 maxTheta = system.maxTheta,
                 maxVelocity = system.maxVelocity
 
-            th.buildVector(position, ship.values.position)
-            th.buildVector(target, orbitTarget.values.position)
-            th.buildVector(velocityV, ship.values.velocity)
+            th.buildVector(position, ship.position)
+            th.buildVector(target, orbitTarget.position)
+            th.buildVector(velocityV, ship.velocity)
 
             fromTarget.subVectors(position, target)
             normal.crossVectors(fromTarget, velocityV)
@@ -283,7 +276,7 @@ var funcs = {
             var theta2Limit = (Math.PI * 53 / 110)
 
             if (velocityV.length() === 0) {
-                th.buildQuaternion(orientationQ, ship.values.facing)
+                th.buildQuaternion(orientationQ, ship.facing)
                 buildCurrentDirection(currentDirection, orientationQ)
 
                 // We're not currently moving, but we are facing within
@@ -329,14 +322,14 @@ var funcs = {
             // the ship can't actually go faster than maxThrust
             accel = validAcceleration(ship, accel)
 
-            worldState.mutateWorldState(ship.key, ship.rev, {
+            return {
                 systems: {
                     engine: {
                         lookAt: th.explodeVector(target),
                         acceleration: accel
                     }
                 }
-            })
+            }
         }
     }(),
     handle_lookAt: function() {
@@ -348,17 +341,17 @@ var funcs = {
             rotationCrossVector = new THREE.Vector3()
 
         return function(ship) {
-            var system = ship.values.systems.engine
+            var system = ship.systems.engine
             if (typeof system.lookAt !== "object" || system.lookAt === null) {
                 return
             }
 
-            th.buildVector(position, ship.values.position)
+            th.buildVector(position, ship.position)
             th.buildVector(target, system.lookAt)
 
             vToTarget.subVectors(target, position).normalize()
 
-            th.buildQuaternion(orientationQ, ship.values.facing)
+            th.buildQuaternion(orientationQ, ship.facing)
             buildCurrentDirection(currentDirection, orientationQ)
             var theta = currentDirection.angleTo(vToTarget) // angle in rads
            
@@ -376,14 +369,14 @@ var funcs = {
             if (rotationCrossVector.length() === 0)
                 rotationCrossVector.copy(currentDirection).applyQuaternion(orientationQ.set(0, 0.7071, 0, 0.7071))
 
-            worldState.mutateWorldState(ship.key, ship.rev, {
+            return {
                 systems: {
                     engine: {
                         theta: theta,
                         thetaAxis: th.explodeVector(rotationCrossVector)
                     }
                 }
-            })
+            }
         }
     }(),
     handle_rotation: function() {
@@ -394,7 +387,7 @@ var funcs = {
             orientationQ = new THREE.Quaternion()
 
         return function(ship) {
-            var system = ship.values.systems.engine,
+            var system = ship.systems.engine,
                 maxTheta = system.maxTheta,
                 theta = Math.min(system.theta, maxTheta)
 
@@ -405,7 +398,7 @@ var funcs = {
                 return
             }
 
-            th.buildQuaternion(orientationQ, ship.values.facing)
+            th.buildQuaternion(orientationQ, ship.facing)
             orientationM.makeRotationFromQuaternion(orientationQ)
 
             matrix.makeRotationAxis(thetaAxis, theta).
@@ -416,14 +409,14 @@ var funcs = {
             orientationQ.setFromRotationMatrix(matrix).normalize()
 
             var q = orientationQ
-            worldState.mutateWorldState(ship.key, ship.rev, {
+            return {
                 facing: {
                     x: q.x,
                     y: q.y,
                     z: q.z,
                     w: q.w,
                 }
-            })
+            }
         }
     }(),
     handle_acceleration: function() {
@@ -434,32 +427,32 @@ var funcs = {
             thrustVector = new THREE.Vector3()
 
         return function(ship) {
-            var thrust = ship.values.systems.engine.acceleration,
-                maxThrust = ship.values.systems.engine.maxThrust
+            var thrust = ship.systems.engine.acceleration,
+                maxThrust = ship.systems.engine.maxThrust
 
             if (thrust === undefined || isNaN(thrust) || thrust <= 0) {
                 return
             }
 
-            th.buildQuaternion(orientationQ, ship.values.facing)
+            th.buildQuaternion(orientationQ, ship.facing)
             buildCurrentDirection(currentDirection, orientationQ)
-            th.buildVector(velocityV, ship.values.velocity)
+            th.buildVector(velocityV, ship.velocity)
 
             thrust = Math.min(thrust, maxThrust)
             thrustVector.copy(currentDirection).multiplyScalar(thrust)
 
 
             velocityV.add(thrustVector)
-            //console.log("applying", thrust, "along", currentDirection, "to", ship.values.velocity, "resulting", velocityV, velocityV.length())
+            //console.log("applying", thrust, "along", currentDirection, "to", ship.velocity, "resulting", velocityV, velocityV.length())
 
             if (velocityV.length() < CONST_fpErrorMargin) {
                 console.log("velocity too small, stopping")
                 velocityV.set(0, 0, 0)
             }
 
-            worldState.mutateWorldState(ship.key, ship.rev, {
+            return {
                 velocity: th.explodeVector(velocityV)
-            })
+            }
         }
     }(),
     handle_velocity: function() {
@@ -469,41 +462,58 @@ var funcs = {
         var position = new THREE.Vector3()
 
         return function(ship) {
-            th.buildVector(velocityV, ship.values.velocity)
+            th.buildVector(velocityV, ship.velocity)
 
             if (velocityV.length() > 0) {
-                if (velocityV.length() > ship.values.systems.engine.maxVelocity) {
-                    velocityV.setLength(ship.values.systems.engine.maxVelocity)
+                if (velocityV.length() > ship.systems.engine.maxVelocity) {
+                    velocityV.setLength(ship.systems.engine.maxVelocity)
                 }
 
-                th.buildVector(position, ship.values.position)
+                th.buildVector(position, ship.position)
                 position.add(velocityV)
 
-                worldState.mutateWorldState(ship.key, ship.rev, 
-                    filterUnchangedVectors(ship, {
-                        velocity: th.explodeVector(velocityV),
-                        position_bucket: buildVectorBucket(position, config.game.position_bucket),
-                        position: th.explodeVector(position)
-                    }))
+                return filterUnchangedVectors(ship, {
+                    velocity: th.explodeVector(velocityV),
+                    position_bucket: space_data.buildVectorBucket(position, config.game.position_bucket),
+                    position: th.explodeVector(position)
+                })
             }
         }
     }(),
     worldTick: function(tickMs) {
         //console.log('starting', tickMs)
         worldState.scanDistanceFrom(undefined, undefined).
-        filter(function(s) { return s.values.type == 'vessel' }).
+        filter(function(s) { return s.type == 'vessel' }).
         forEach(function(ship) {
-            if (ship.values.systems.engine === undefined)
+            if (ship.systems.engine === undefined)
                 return
 
             var cmds = ["lookAt", "rotation", "acceleration", "velocity"]
-            var engine_state = ship.values.systems.engine.state
+            var engine_state = ship.systems.engine.state,
+                pseudoState = {
+                    // Be careful deepMerge doesn't give you a deep cloned
+                    // object unless you use it just right
+                    uuid: ship.uuid,
+                    position: C.deepMerge(ship.position, {}),
+                    position_bucket: C.deepMerge(ship.position_bucket, {}),
+                    facing: C.deepMerge(ship.facing, {}),
+                    velocity: C.deepMerge(ship.velocity, {}),
+                    systems: {
+                        engine: C.deepMerge(ship.systems.engine, {}),
+                    }
+                },
+                patch = {}
+
+            function applyPatch(p) {
+                C.deepMerge(p, pseudoState)
+                C.deepMerge(p, patch)
+            }
 
             if (engine_state !== null) {
                 var fn = funcs["handle_" + engine_state]
 
                 if (fn === undefined) {
-                    worldState.mutateWorldState(ship.key, ship.rev, {
+                    applyPatch({
                         systems: {
                             engine: {
                                 state: null
@@ -517,14 +527,21 @@ var funcs = {
 
             // TODO there should be some better way to accumulate the
             // changes and then send them as a batch to world state
-            // instead of using mutateWorldState in each command
+            // instead of using queueChangeOut in each command
             cmds.forEach(function(cmd) {
-                funcs["handle_" + cmd](ship)
-                ship = worldState.get(ship.key)
+                try {
+                    var result = funcs["handle_" + cmd](pseudoState)
+                    if (result !== undefined)
+                        applyPatch(result)
+                } catch(e) {
+                    throw new Error("in handle_"+cmd+": "+e.message)
+                }
             })
-        }, this)
+
+            worldState.queueChangeOut(ship.uuid, patch)
+        })
         //console.log('done', tickMs)
     }
 }
 
-worldState.addListener(funcs)
+worldState.onWorldTick(funcs.worldTick)

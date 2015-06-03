@@ -18,7 +18,10 @@ var keys_to_update_on = ["blueprint", "account", "solar_system"]
 
 // WorldState is a private function so it's safe
 // to declare these here.
-var listeners = []
+var listeners = [],
+    worldTickers = [],
+    changesIn = [],
+    changesOut = []
 
 var dao = {
     loadIterator: function(fn) {
@@ -34,11 +37,11 @@ var dao = {
         return db.
         none("insert into space_objects (id, system_id, account_id, doc) values ($4, $1, $2, $3)", [values.solar_system, values.account, values, uuid])
     },
-    update: function(key, values) {
-        return db.none("update space_objects set doc = $2, system_id = $3 where id = $1", [key, values, values.solar_system])
+    update: function(uuid, values) {
+        return db.none("update space_objects set doc = $2, system_id = $3 where id = $1", [uuid, values, values.solar_system])
     },
-    tombstone: function(key) {
-        return db.none("update space_objects set tombstone = $2, tombstone_at = current_timestamp where id = $1 and tombstone = false and tombstone_at is null", [key, true])
+    tombstone: function(uuid) {
+        return db.none("update space_objects set tombstone = $2, tombstone_at = current_timestamp where id = $1 and tombstone = false and tombstone_at is null", [uuid, true])
     }
 
 }
@@ -61,24 +64,19 @@ extend(WorldState.prototype, {
     },
     loadFromDBOnBoot: function() {
         return dao.loadIterator(function(obj) {
-            worldStateStorage[obj.id] = {
-                key: obj.id,
-                rev: 0,
-                values: obj.doc
-            }
-
-            debug("loaded", obj)
+            worldStateStorage[obj.id] = obj.doc
+            //debug("loaded", obj)
         })
     },
 
-    cleanup: function(key) {
-        var obj = this.get(key)
-        if (obj.values.tombstone !== true)
+    cleanup: function(uuid) {
+        var obj = this.get(uuid)
+        if (obj.tombstone !== true)
             throw "you can't clean up an object still alive"
 
-        return db.none("delete from space_objects where id = $1", key).
+        return db.none("delete from space_objects where id = $1", uuid).
         then(function() {
-            delete worldStateStorage[key.toString()]
+            delete worldStateStorage[uuid.toString()]
         })
     },
 
@@ -86,12 +84,8 @@ extend(WorldState.prototype, {
         return db.query("select * from space_objects where account_id = $1", [account]).
         then(function(data) {
             return data.map(function(row) {
-                // Almost like the in memory version but without the rev.
                 // someday all of this will have to be consolidated
-                return {
-                    key: row.id,
-                    values: row.doc
-                }
+                return row.doc
             })
         })
     },
@@ -122,96 +116,95 @@ extend(WorldState.prototype, {
         }, this)
 
         return list.filter(function(v, i) {
-            return (v !== undefined && v.values.tombstone !== true && (type === undefined || v.values.type === type))
+            return (v !== undefined && v.tombstone !== true && (type === undefined || v.type === type))
         })
     },
 
-    get: function(key) {
-        if (key !== undefined) {
-            return worldStateStorage[key.toString()]
+    get: function(uuid) {
+        if (uuid !== undefined) {
+            return worldStateStorage[uuid.toString()]
         }
     },
 
     addObject: function(values) {
-        var uuid = values.uuid || uuidGen.v1(),
-            self = this
+        values.uuid = values.uuid || uuidGen.v1()
 
-        delete values.uuid;
+        var self = this,
+            uuid = values.uuid
 
-        self.emit('worldStatePrepareNewObject', values)
 
         return dao.insert(uuid, values).
         then(function() {
-            debug("added object", uuid, values)
-            self.mutateWorldState(uuid, 0, values)
+            //debug("added object", uuid, values)
+            self.queueChangeIn(uuid, values)
             return uuid
         })
     },
 
-    mutateWorldState: function(key, expectedRev, patch, withDebug) {
-        key = key.toString()
+    queueChangeIn: function(uuid, patch) {
+        this.queueChange(uuid, patch, changesIn)
+    },
 
-        if (withDebug === true) {
-            debug(patch)
+    queueChangeOut: function(uuid, patch) {
+        this.queueChange(uuid, patch, changesOut)
+    },
+
+    queueChange: function(uuid, patch, list) {
+        list.push({
+            uuid: uuid,
+            patch: patch
+        })
+    },
+
+    applyChangeList: function(list, ts) {
+        var self = this
+        var timer = stats.applyChangeList.start()
+
+        list.forEach(function(c) {
+            self.mutateWorldState(ts, c.uuid, c.patch)
+        })
+
+        list.length = 0
+        timer.end()
+    },
+
+    mutateWorldState: function(ts, uuid, patch) {
+        uuid = uuid.toString()
+
+        var old = worldStateStorage[uuid] || { uuid: uuid }
+
+        if (worldStateStorage[uuid] === undefined) {
+            worldStateStorage[uuid] = old
         }
 
-        // TODO this needs to sync tick time
-        var ts = this.currentTick()
-        var old = worldStateStorage[key] || {
-            key: key,
-            rev: 0,
-            values: {}
-        }
-
-        var oldRev = old.rev
-        var newRev = old.rev = oldRev + 1
-
-        if (oldRev !== expectedRev) {
-            var data = {
-                type: "revisionError",
-                expected: expectedRev,
-                found: oldRev,
-                key: key
-            }
-
-            debug(data)
-            var e = new Error("revisionError expected=" + expectedRev + " found=" + oldRev)
-            e.data = data
-            throw e
-        }
-
-        if (worldStateStorage[key] === undefined) {
-            worldStateStorage[key] = old
-        }
-
-        if (patch.tombstone === true && old.values.tombstone !== true) {
-            dao.tombstone(key).then(function() {
-                if ((patch.tombstone_cause === 'destroyed' || patch.tombstone_cause === 'despawned') && old.values.type == 'vessel') {
-                    return C.request('tech', 'DELETE', 204, '/vessels/' + key)
+        if (patch.tombstone === true && old.tombstone !== true) {
+            // Ideally these would go out in guaranteed order via a journal
+            dao.tombstone(uuid).then(function() {
+                if ((patch.tombstone_cause === 'destroyed' || patch.tombstone_cause === 'despawned') && old.type == 'vessel') {
+                    C.request('tech', 'DELETE', 204, '/vessels/' + uuid)
                 }
-            })
+            }).done()
         }
 
-        C.deepMerge(patch, old.values)
+        C.deepMerge(patch, old)
 
         // broadcast the change to all the listeners
         listeners.forEach(function(h) {
             if (h.onWorldStateChange !== undefined) {
                 try {
-                    h.onWorldStateChange(ts, key, oldRev, newRev, patch)
+                    h.onWorldStateChange(ts, uuid, patch)
                 } catch (e) {
                     console.log("onWorldStateChange failed", h, e, e.stack)
                 }
             }
         })
 
-        // TODO if this updates tombstone it needs to set tombstone_at
         if (keys_to_update_on.some(function(i) {
                 return patch.hasOwnProperty(i)
             })) {
-            return dao.update(key, old.values)
-        } else {
-            return Q(null)
+
+            // Ideally these would go out in guaranteed order via a journal
+            dao.update(uuid, old).done()
         }
     },
 
@@ -224,42 +217,49 @@ extend(WorldState.prototype, {
     },
 
     runWorldTicker: function() {
-        this.worldTickBound = this.worldTick.bind(this)
+        this.gameLoopBound = this.gameLoop.bind(this)
         this._currentTick = new Date().getTime()
-        setTimeout(this.worldTickBound, config.game.tickInterval)
+        setTimeout(this.gameLoopBound, config.game.tickInterval)
     },
 
     currentTick: function() {
         return this._currentTick
     },
 
-    worldTick: function() {
-        var startedAt = new Date().getTime()
-        var tickNumber = this._currentTick + config.game.tickInterval
-        var skew = startedAt - tickNumber
+    onWorldTick: function(fn) {
+        worldTickers.push(fn)
+    },
 
-        this._currentTick = tickNumber
-        stats.worldTickSkew.update(skew)
+    gameLoop: function() {
+        var startedAt = new Date().getTime(),
+            tickNumber = this._currentTick = this._currentTick + config.game.tickInterval
 
-        listeners.forEach(function(h) {
-            if (h.worldTick !== undefined) {
-                try {
-                    h.worldTick(tickNumber)
-                } catch(e) {
-                    console.log("failed to process worldTick handler")
-                    console.log(e.stack)
-                }
+        var jitter = startedAt - tickNumber
+        stats.gameLoopJitter.update(jitter)
+
+        this.applyChangeList(changesIn, tickNumber)
+
+        var tickTimer = stats.worldTick.start()
+        worldTickers.forEach(function(fn) {
+            try {
+                fn(tickNumber)
+            } catch(e) {
+                console.log("failed to process gameLoop handler")
+                console.log(e.stack)
             }
         })
+        tickTimer.end()
+
+        this.applyChangeList(changesOut, tickNumber)
 
         var now = new Date().getTime()
-        stats.worldTick.update(now - startedAt)
+        stats.gameLoop.update(now - startedAt)
         var delay = tickNumber + config.game.tickInterval - now
         if (delay < 0)
             delay = 0
 
-        stats.worldTickDelay.update(delay)
-        setTimeout(this.worldTickBound, delay)
+        stats.gameLoopDelay.update(delay)
+        setTimeout(this.gameLoopBound, delay)
     }
 })
 

@@ -81,6 +81,13 @@ app.get('/specs', function(req, res) {
     })
 })
 
+app.post('/specs/reset', function(req, res) {
+    C.http.authorize_req(req, true).then(function() {
+        stats.reset()
+        res.sendStatus(204)
+    }).fail(C.http.errHandler(req, res, console.log)).done()
+})
+
 // TODO what happens to a structure's health when it's
 // upgraded?
 app.post('/spodb/:uuid', function(req, res) {
@@ -91,11 +98,12 @@ app.post('/spodb/:uuid', function(req, res) {
         var blueprint = blueprints[blueprint_id]
 
         var obj = worldState.get(uuid)
-        var new_obj = C.deepMerge(obj.values, {})
+        // obj is the world state, DO NOT MODIFY
+        var new_obj = C.deepMerge(obj, {})
         C.deepMerge(blueprint, new_obj)
         delete new_obj.uuid
 
-        return worldState.mutateWorldState(uuid, obj.rev, new_obj, true)
+        return worldState.queueChangeIn(uuid, new_obj)
     }).then(function() {
         res.sendStatus(204)
     }).fail(C.http.errHandler(req, res, console.log)).done()

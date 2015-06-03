@@ -88,7 +88,7 @@ extend(WSController.prototype, {
             this.sendState(ts, key, {})
         }.bind(this))
     },
-    onWorldStateChange: function(ts, key, oldRev, newRev, patch) {
+    onWorldStateChange: function(ts, key, patch) {
         this.sendState(ts, key, patch)
     }
 })

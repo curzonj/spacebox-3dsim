@@ -31,19 +31,19 @@ module.exports = {
         var ship = worldState.get(msg.vessel)
         var wormhole = worldState.get(msg.wormhole)
 
-        var systemId = ship.values.solar_system
-        if (wormhole.values.solar_system !== systemId) {
+        var systemId = ship.solar_system
+        if (wormhole.solar_system !== systemId) {
             throw ("requested wormhole is in the wrong system")
-        } else if (wormhole.values.type !== 'wormhole') {
+        } else if (wormhole.type !== 'wormhole') {
             throw ("that's not a wormhole")
-        } else if (wormhole.values.tombstone === true) {
+        } else if (wormhole.tombstone === true) {
             throw ("that wormhole has collapsed")
-        } else if (ship.values.systems.engine === undefined) {
+        } else if (ship.systems.engine === undefined) {
             throw ("that vessel can't move")
         }
 
-        th.buildVector(position1, ship.values.position)
-        th.buildVector(position2, wormhole.values.position)
+        th.buildVector(position1, ship.position)
+        th.buildVector(position2, wormhole.position)
 
         //console.log(system.range, position1.distanceTo(position2), position1, position2)
 
@@ -52,14 +52,14 @@ module.exports = {
 
         debug(wormhole)
 
-        return db.query("select * from wormholes where id = $1 and expires_at > current_timestamp", [wormhole.values.wormhole_id]).
+        return db.query("select * from wormholes where id = $1 and expires_at > current_timestamp", [wormhole.wormhole_id]).
         then(function(data) {
             if (data.length === 0)
                 throw ("that wormhole has collapsed")
 
             debug(data)
             var destination_id, row = data[0],
-                direction = wormhole.values.direction,
+                direction = wormhole.direction,
                 before = Q(null)
 
             if (direction === 'outbound' && row.inbound_id === null) {
@@ -87,9 +87,9 @@ module.exports = {
 
                 // When you jump through the wormhole you're not moving
                 // when you get there
-                return worldState.mutateWorldState(msg.vessel, ship.rev, {
-                    solar_system: destination_spo.values.solar_system,
-                    position: destination_spo.values.position,
+                return worldState.queueChangeIn(msg.vessel, {
+                    solar_system: destination_spo.solar_system,
+                    position: destination_spo.position,
                     velocity: { x: 0, y: 0, z: 0 },
                     systems: {
                         engine: {
@@ -115,7 +115,7 @@ module.exports = {
             throw "invalid vessel"
         }
 
-        var systemId = ship.values.solar_system
+        var systemId = ship.solar_system
 
         return solarsystems.getWormholes(systemId).then(function(data) {
             debug(data)

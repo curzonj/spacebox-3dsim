@@ -45,16 +45,16 @@ extend(Class.prototype, {
 
         return worldState.getAccountObjects(this.auth.account).then(function(data) {
             data.forEach(function(obj) {
-                self.privilegedKeys[obj.key] = true
+                self.privilegedKeys[obj.uuid] = true
 
-                var list = self.visibleSystems[obj.values.solar_system] || []
-                if (list.indexOf(obj.key) === -1)
-                    list.push(obj.key)
-                self.visibleSystems[obj.values.solar_system] = list
+                var list = self.visibleSystems[obj.solar_system] || []
+                if (list.indexOf(obj.uuid) === -1)
+                    list.push(obj.uuid)
+                self.visibleSystems[obj.solar_system] = list
 
-                self.scanPoints[obj.key] = {
-                    position: obj.values.position,
-                    solar_system: obj.values.solar_system
+                self.scanPoints[obj.uuid] = {
+                    position: obj.position,
+                    solar_system: obj.solar_system
                 }
             })
 
@@ -68,8 +68,19 @@ extend(Class.prototype, {
             }))
         })
     },
-    visibilityTest: function(values) {
-        return (this.visibleSystems[values.solar_system] !== undefined)
+    addVisiblePoint: function(key, v) {
+        this.visiblePoints[key] = {
+            solar_system: v.solar_system,
+            position_bucket: v.position_bucket,
+            position: v.position,
+        }
+    },
+    visibilityTest: function(values, before) {
+        if (values.solar_system !== undefined) {
+            return (this.visibleSystems[values.solar_system] !== undefined)
+        } else {
+            return before
+        }
     },
     checkVisibility: function(key, patch) {
         if (patch.account !== undefined && patch.account == this.auth.account) {
@@ -97,40 +108,18 @@ extend(Class.prototype, {
                 // if you saw it before, you need a tombstone regardless
                 currently = true
             }
-        } else if (before) {
-            // If we could see it before, what has to change so we can't
-            // see it now?
-            if (patch.solar_system !== undefined) {
-                currently = privileged || this.visibilityTest(patch)
-            } else {
-                currently = true
-            }
         } else {
-            // TODO this is SUPER TERRIBLY inefficient. We have to 
-            // look up the object from worldState for every update
-            // that we can't see. But we also don't want every controller
-            // to keep a list of every key in the game that they can't see
-            obj = worldState.get(key)
-
-            if (obj === undefined) {
-                error("missing key during checkVisibility", key, patch)
-                currently = false
-            } else {
-                currently = privileged || this.visibilityTest(obj.values)
-            }
+            currently = privileged || this.visibilityTest(patch, before)
         }
 
         if (!before && currently) {
-            this.visiblePoints[key] = {
-                solar_system: obj.values.solar_system,
-                position: obj.values.position,
-            }
+            obj = worldState.get(key)
+            this.addVisiblePoint(key, obj)
         } else if (before && !currently) {
             // The patch doesn't contain a tombstone, but they can't see
             // the object so they are going to receive a tombstone anyways
             delete this.visiblePoints[key]
         }
-
 
         //debug("visiblePoints", this.visiblePoints)
 
@@ -188,15 +177,12 @@ extend(Class.prototype, {
                 // TODO we can't actually pas it our new scan
                 // point because that'll hit the db and be async
                 worldState.scanDistanceFrom(undefined).forEach(function(obj) {
-                    if (key != obj.key && this.visibilityTest(obj.values)) {
-                        this.visiblePoints[obj.key] = {
-                            solar_system: obj.values.solar_system,
-                            position: obj.values.position,
-                        }
+                    if (key != obj.uuid && this.visibilityTest(obj)) {
+                        this.addVisiblePoint(obj.uuid, obj)
 
                         changes.push({
-                            key: obj.key,
-                            values: this.filterProperties(obj.key, obj.values)
+                            key: obj.uuid,
+                            values: this.filterProperties(obj.uuid, obj)
                         })
                     }
                 }.bind(this))
@@ -241,7 +227,7 @@ extend(Class.prototype, {
                 // checkVisibility had to fetch it for us
                 list.push({
                     key: key,
-                    values: visible.privileged ? visible.obj.values : this.filterProperties(key, visible.obj.values)
+                    values: visible.privileged ? visible.obj : this.filterProperties(key, visible.obj)
                 })
             }
         }
