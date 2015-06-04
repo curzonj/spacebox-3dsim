@@ -63,7 +63,6 @@ extend(WSController.prototype, {
     },
     sendState: function(ts, key, patch) {
         var values = this.visibility.rewriteProperties(key, patch)
-
         if (values.length === 0)
             return
 

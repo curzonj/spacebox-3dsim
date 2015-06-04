@@ -21,7 +21,7 @@ var keys_to_update_on = ["blueprint", "account", "solar_system"]
 var listeners = [],
     worldTickers = [],
     changesIn = [],
-    changesOut = []
+    eventReducers = {}
 
 var dao = {
     loadIterator: function(fn) {
@@ -145,10 +145,6 @@ extend(WorldState.prototype, {
         this.queueChange(uuid, patch, changesIn)
     },
 
-    queueChangeOut: function(uuid, patch) {
-        this.queueChange(uuid, patch, changesOut)
-    },
-
     queueChange: function(uuid, patch, list) {
         list.push({
             uuid: uuid,
@@ -169,6 +165,9 @@ extend(WorldState.prototype, {
     },
 
     mutateWorldState: function(ts, uuid, patch) {
+        if(Object.keys(patch).length === 0)
+            throw new Error("empty patch")
+
         uuid = uuid.toString()
 
         var old = worldStateStorage[uuid] || { uuid: uuid }
@@ -194,7 +193,8 @@ extend(WorldState.prototype, {
                 try {
                     h.onWorldStateChange(ts, uuid, patch)
                 } catch (e) {
-                    console.log("onWorldStateChange failed", h, e, e.stack)
+                    console.log("onWorldStateChange failed", uuid, old, patch, e, e.stack)
+                    process.exit()
                 }
             }
         })
@@ -230,6 +230,76 @@ extend(WorldState.prototype, {
         worldTickers.push(fn)
     },
 
+    addEventReducer: function(type, fn) {
+        eventReducers[type] = fn
+    },
+
+    worldTick: function(tickNumber) {
+        var tickTimer = stats.worldTick.start()
+        var changeSet = {}
+        var events = {}
+
+        Object.keys(worldStateStorage).forEach(function(key) {
+            var patch,
+                ship = worldStateStorage[key]
+
+            worldTickers.forEach(function(fn, i) {
+                var result
+
+                try {
+                    result = fn(tickNumber, ship)
+
+                    if (result !== undefined) {
+                        if (result.patch !== undefined) {
+                            if (patch === undefined)
+                                patch = changeSet[key] = {}
+                        
+                            C.deepMerge(result.patch, patch)
+
+                            if(Object.keys(patch).length === 0)
+                                throw new Error("empty patch "+i)
+                        }
+
+                        if (result.events !== undefined)
+                            result.events.forEach(function(e) {
+                                var ship = events[e.uuid] = events[e.uuid] || {}
+                                var type = ship[e.type] = ship[e.type] || []
+                                type.push(e)
+                            })
+                    }
+                } catch(e) {
+                    console.log("failed to process worldTick handler")
+                    console.log(e.stack)
+                }
+            })
+        }, this)
+
+        Object.keys(events).forEach(function(key) {
+            var event_types = events[key],
+                ship = worldStateStorage[key],
+                patch = changeSet[key]
+
+            if (patch === undefined)
+                patch = changeSet[key] = {}
+
+            Object.keys(event_types).forEach(function(type) {
+                var event_list = event_types[type],
+                    fn = eventReducers[type]
+
+                try {
+                    fn(tickNumber, ship, patch, event_list)
+                } catch(e) {
+                    console.log("failed to process worldTick event handler")
+                    console.log(e.stack)
+                }
+            }, this)
+        }, this)
+
+        tickTimer.end()
+
+        return changeSet
+    },
+
     gameLoop: function() {
         var startedAt = new Date().getTime(),
             tickNumber = this._currentTick = this._currentTick + config.game.tickInterval
@@ -239,18 +309,18 @@ extend(WorldState.prototype, {
 
         this.applyChangeList(changesIn, tickNumber)
 
-        var tickTimer = stats.worldTick.start()
-        worldTickers.forEach(function(fn) {
-            try {
-                fn(tickNumber)
-            } catch(e) {
-                console.log("failed to process gameLoop handler")
-                console.log(e.stack)
-            }
-        })
-        tickTimer.end()
+        var changeSet = this.worldTick(tickNumber)
 
-        this.applyChangeList(changesOut, tickNumber)
+        // TODO send a single snapshot diff message instead of lots
+        // of small diff messages. Combine in with the applyChangeList
+        // above
+        // TODO include the events with the objects, like X shot Y
+        this.applyChangeList(Object.keys(changeSet).map(function(k) {
+            return {
+                uuid: k,
+                patch: changeSet[k]
+            }
+        }), tickNumber)
 
         var now = new Date().getTime()
         stats.gameLoop.update(now - startedAt)

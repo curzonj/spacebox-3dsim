@@ -13,6 +13,13 @@ function buildCurrentDirection(direction, orientationQ) {
     return direction.set(0, 0, 1).applyQuaternion(orientationQ).normalize()
 }
 
+function assertVector(v) {
+    if ( v === undefined || v === null || isNaN(v.x) || isNaN(v.y) || isNaN(v.z) )
+        throw new Error("invalid vector: "+JSON.stringify(v))
+
+    return v
+}
+
 function validAcceleration(ship, desired) {
     var max = ship.systems.engine.maxThrust
 
@@ -34,7 +41,8 @@ function filterUnchangedVectors(spo, patch) {
             delete patch[k]
     })
 
-    return patch
+    if (Object.keys(patch).length > 0)
+        return patch
 }
 
 // TODO the math for maxBrakeVelocity and maxVtoTarget is
@@ -301,7 +309,7 @@ var funcs = {
                 var thetaC = Math.PI / 2 - theta2
                 var vNot = d * Math.sin(thetaC) / sin90
                 if (vNot < maxVelocity) {
-                    console.log("warning, too close to use right angle orbit")
+                    //console.log("warning, too close to use right angle orbit")
                     return
                 }
 
@@ -346,10 +354,18 @@ var funcs = {
                 return
             }
 
+            assertVector(ship.position)
+            assertVector(ship.facing)
+            assertVector(system.lookAt)
+
             th.buildVector(position, ship.position)
             th.buildVector(target, system.lookAt)
 
             vToTarget.subVectors(target, position).normalize()
+
+            // We can't look at it if we're sitting on it
+            if (vToTarget.length() === 0)
+                return
 
             th.buildQuaternion(orientationQ, ship.facing)
             buildCurrentDirection(currentDirection, orientationQ)
@@ -358,7 +374,7 @@ var funcs = {
             // CONST_fpErrorMargin is not good enough here
             // this function will constantly trigger if you don't
             // set lookAt null, but you can't use the CONST_fpErrorMargin
-            if (theta === 0)
+            if (theta === 0 || isNaN(theta))
                 return
 
             rotationCrossVector.crossVectors(currentDirection, vToTarget).normalize()
@@ -369,11 +385,14 @@ var funcs = {
             if (rotationCrossVector.length() === 0)
                 rotationCrossVector.copy(currentDirection).applyQuaternion(orientationQ.set(0, 0.7071, 0, 0.7071))
 
+            if (isNaN(theta))
+                throw new Error("invalid theta")
+
             return {
                 systems: {
                     engine: {
                         theta: theta,
-                        thetaAxis: th.explodeVector(rotationCrossVector)
+                        thetaAxis: assertVector(th.explodeVector(rotationCrossVector))
                     }
                 }
             }
@@ -410,12 +429,12 @@ var funcs = {
 
             var q = orientationQ
             return {
-                facing: {
+                facing: assertVector({
                     x: q.x,
                     y: q.y,
                     z: q.z,
                     w: q.w,
-                }
+                })
             }
         }
     }(),
@@ -451,7 +470,7 @@ var funcs = {
             }
 
             return {
-                velocity: th.explodeVector(velocityV)
+                velocity: assertVector(th.explodeVector(velocityV))
             }
         }
     }(),
@@ -480,67 +499,68 @@ var funcs = {
             }
         }
     }(),
-    worldTick: function(tickMs) {
-        //console.log('starting', tickMs)
-        worldState.scanDistanceFrom(undefined, undefined).
-        filter(function(s) { return s.type == 'vessel' }).
-        forEach(function(ship) {
-            if (ship.systems.engine === undefined)
-                return
+    worldTick: function(tickMs, ship) {
+        if (ship.type !== 'vessel' )
+            return 
+        if (ship.systems.engine === undefined)
+            return
 
-            var cmds = ["lookAt", "rotation", "acceleration", "velocity"]
-            var engine_state = ship.systems.engine.state,
-                pseudoState = {
-                    // Be careful deepMerge doesn't give you a deep cloned
-                    // object unless you use it just right
-                    uuid: ship.uuid,
-                    position: C.deepMerge(ship.position, {}),
-                    position_bucket: C.deepMerge(ship.position_bucket, {}),
-                    facing: C.deepMerge(ship.facing, {}),
-                    velocity: C.deepMerge(ship.velocity, {}),
-                    systems: {
-                        engine: C.deepMerge(ship.systems.engine, {}),
-                    }
-                },
+        var cmds = ["lookAt", "rotation", "acceleration", "velocity"]
+        var patch,
+            engine_state = ship.systems.engine.state,
+            pseudoState = {
+                // Be careful deepMerge doesn't give you a deep cloned
+                // object unless you use it just right
+                uuid: ship.uuid,
+                position: C.deepMerge(ship.position, {}),
+                position_bucket: C.deepMerge(ship.position_bucket, {}),
+                facing: C.deepMerge(ship.facing, {}),
+                velocity: C.deepMerge(ship.velocity, {}),
+                systems: {
+                    engine: C.deepMerge(ship.systems.engine, {}),
+                }
+            }
+
+        function applyPatch(p) {
+            //console.log(p)
+            if (patch === undefined)
                 patch = {}
 
-            function applyPatch(p) {
-                C.deepMerge(p, pseudoState)
-                C.deepMerge(p, patch)
-            }
+            C.deepMerge(p, pseudoState)
+            C.deepMerge(p, patch)
+        }
 
-            if (engine_state !== null) {
-                var fn = funcs["handle_" + engine_state]
+        if (engine_state !== null) {
+            var fn = funcs["handle_" + engine_state]
 
-                if (fn === undefined) {
-                    applyPatch({
-                        systems: {
-                            engine: {
-                                state: null
-                            }
+            if (fn === undefined) {
+                applyPatch({
+                    systems: {
+                        engine: {
+                            state: null
                         }
-                    })
-                } else {
-                    cmds.unshift(engine_state)
-                }
+                    }
+                })
+            } else {
+                cmds.unshift(engine_state)
             }
+        }
 
-            // TODO there should be some better way to accumulate the
-            // changes and then send them as a batch to world state
-            // instead of using queueChangeOut in each command
-            cmds.forEach(function(cmd) {
-                try {
-                    var result = funcs["handle_" + cmd](pseudoState)
-                    if (result !== undefined)
-                        applyPatch(result)
-                } catch(e) {
-                    throw new Error("in handle_"+cmd+": "+e.message)
-                }
-            })
-
-            worldState.queueChangeOut(ship.uuid, patch)
+        // TODO there should be some better way to accumulate the
+        // changes and then send them as a batch to world state
+        // instead of using queueChangeOut in each command
+        cmds.forEach(function(cmd) {
+            try {
+                var result = funcs["handle_" + cmd](pseudoState)
+                if (result !== undefined && result !== null) 
+                    applyPatch(result)
+            } catch(e) {
+                console.log(e.stack)
+                throw new Error("in handle_"+cmd+": "+e.message)
+            }
         })
-        //console.log('done', tickMs)
+
+        return { patch: patch }
     }
 }
 

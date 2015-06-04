@@ -1,85 +1,97 @@
 'use strict';
 
 var worldState = require('../world_state.js'),
+    C = require('spacebox-common'),
     th = require('spacebox-common/src/three_helpers.js'),
     THREE = require('three')
 
-function stopShooting(ship) {
-    worldState.queueChangeOut(ship.uuid, {
-        systems: {
-            weapon: {
-                state: null
+function stopShooting() {
+    return {
+        patch: {
+            systems: {
+                weapon: {
+                    state: null
+                },
             },
-        },
-        effects: {
-            shooting: null
+            effects: {
+                shooting: null
+            }
         }
-    })
+    }
 }
 
 // NodeJS is single threaded so this is instead of object pooling
 var position1 = new THREE.Vector3()
 var position2 = new THREE.Vector3()
 
-var obj = {
-    worldTick: function(tickMs) {
-        worldState.scanDistanceFrom(undefined, undefined).
-        filter(function(s) { return s.type == 'vessel' }).
-        forEach(function(ship) {
-            var system = ship.systems.weapon
+worldState.onWorldTick(function(tickMs, ship) {
+    if (ship.type !== 'vessel' )
+        return 
+    var system = ship.systems.weapon
 
-            // TODO Should make a better api for handling a subsystem state
-            if (system && system.state == "shoot") {
-                var target = worldState.get(system.target)
+    // TODO Should make a better api for handling a subsystem state
+    if (system === undefined || system.state !== "shoot")
+        return 
 
-                if (target === undefined ||
-                    target.tombstone === true ||
-                    target.solar_system !== ship.solar_system
-                ) {
-                    stopShooting(ship)
-                    return
-                }
+    var target = worldState.get(system.target)
 
-                th.buildVector(position1, ship.position)
-                th.buildVector(position2, target.position)
-
-                //console.log(system.range, position1.distanceTo(position2), position1, position2)
-
-                if (position1.distanceTo(position2) > system.range) {
-                    stopShooting(ship)
-                    return
-                }
-
-                if (target.health > system.damage) {
-                    var health = target.health - system.damage
-                    worldState.queueChangeOut(target.uuid, {
-                        health: health,
-                        health_pct: health / target.maxHealth
-                    })
-
-                    if (ship.effects.shooting !== target.uuid) {
-                        worldState.queueChangeOut(ship.uuid, {
-                            effects: {
-                                shooting: target.uuid
-                            }
-                        })
-                    }
-                } else {
-                    worldState.queueChangeOut(target.uuid, {
-                        health: 0,
-                        health_pct: 0,
-                        effects: {
-                            // TODO implement this effect
-                            explosion: true
-                        },
-                        tombstone_cause: 'destroyed',
-                        tombstone: true
-                    })
-                    stopShooting(ship)
-                }
-            }
-        })
+    if (target === undefined ||
+        target.tombstone === true ||
+        target.solar_system !== ship.solar_system
+    ) {
+        return stopShooting()
     }
-}
 
-worldState.onWorldTick(obj.worldTick)
+    th.buildVector(position1, ship.position)
+    th.buildVector(position2, target.position)
+
+    //console.log(system.range, position1.distanceTo(position2), position1, position2)
+
+    if (position1.distanceTo(position2) > system.range) {
+        return stopShooting()
+    }
+
+    var result = {
+        events: [{
+            uuid: target.uuid,
+            source: ship.uuid,
+            type: 'damage',
+            amount: system.damage
+        }]
+    }
+
+    if (ship.effects.shooting !== target.uuid) {
+        result.patch = {
+            effects: {
+                shooting: target.uuid
+            }
+        }
+    }
+
+    return result
+})
+
+worldState.addEventReducer('damage', function(tickMs, ship, patch, events) {
+    var totalDamage = events.reduce(function(total, e) {
+        return total + e.amount
+    }, 0)
+
+    var health = ship.health - totalDamage
+    if (health === null || isNaN(health)) {
+        console.log(ship, events)
+        throw new Error("invalid health")
+    }
+
+    if (health <= 0) {
+        C.deepMerge({
+            health: 0,
+            effects: {
+                explosion: true
+            },
+            tombstone_cause: 'destroyed',
+            tombstone: true
+        }, patch)
+    } else {
+        patch.health = health
+    }
+})
