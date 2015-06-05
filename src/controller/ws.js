@@ -14,7 +14,13 @@ var EventEmitter = require('events').EventEmitter,
 var WSController = module.exports = function(ws) {
     this.ws = ws
     this.auth = ws.upgradeReq.authentication
-    this.onConnectionOpen()
+    try {
+        this.onConnectionOpen()
+    } catch(e) {
+        console.log('fatal error setting up connection')
+        console.log(e.stack)
+        ws.close()
+    }
 }
 
 util.inherits(WSController, EventEmitter)
@@ -26,10 +32,10 @@ extend(WSController.prototype, {
         this.ws.on('close', this.onConnectionClosed.bind(this))
     },
     onConnectionOpen: function() {
-        this.visibility = new Visibility(this.auth)
-
         this.setupConnectionCallbacks()
-        console.log("connected")
+        console.log("connected "+this.auth.account)
+
+        this.visibility = new Visibility(this.auth)
 
         // We listen for updates so that we don't
         // miss any updates while we fetch the
@@ -38,11 +44,9 @@ extend(WSController.prototype, {
         // are only sent after the full state is sent
         worldState.addListener(this)
 
-        this.sendWorldState().then(function() {
-            this.send({
-                type: 'connectionReady'
-            })
-        }.bind(this)).done()
+        this.sendWorldState()
+        this.send({ type: 'connectionReady' })
+        console.log('world state sync complete')
     },
     onConnectionClosed: function() {
         worldState.removeListener(this)
@@ -80,11 +84,12 @@ extend(WSController.prototype, {
         }
     },
     sendWorldState: function() {
+        console.log('sending world state')
         // TODO the worldstate itself should have a better sense of time
         var ts = worldState.currentTick()
 
-        return this.visibility.loadInitialWorldState(function(key) {
-            this.sendState(ts, key, {})
+        this.visibility.loadInitialWorldState(function(obj) {
+            this.sendState(ts, obj.uuid, obj)
         }.bind(this))
     },
     onWorldStateChange: function(ts, key, patch) {

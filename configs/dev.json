@@ -1,6 +1,6 @@
 {
   "tickInterval": 80,
-  "position_bucket": 5,
+  "chunk_size": 5,
   "maximum_vessels": 50,
   "minumim_solar_systems": 10,
   "minimum_count_wormholes": 4,

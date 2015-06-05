@@ -4,7 +4,6 @@ var CONST_fpErrorMargin = 0.000001
 
 var worldState = require('../world_state.js'),
     config = require('../config.js'),
-    space_data = require('../space_data.js'),
     th = require('spacebox-common/src/three_helpers.js'),
     C = require('spacebox-common'),
     THREE = require('three')
@@ -493,7 +492,7 @@ var funcs = {
 
                 return filterUnchangedVectors(ship, {
                     velocity: th.explodeVector(velocityV),
-                    position_bucket: space_data.buildVectorBucket(position, config.game.position_bucket),
+                    chunk: th.buildVectorBucket(position, config.game.chunk_size),
                     position: th.explodeVector(position)
                 })
             }
@@ -513,7 +512,7 @@ var funcs = {
                 // object unless you use it just right
                 uuid: ship.uuid,
                 position: C.deepMerge(ship.position, {}),
-                position_bucket: C.deepMerge(ship.position_bucket, {}),
+                chunk: C.deepMerge(ship.chunk, {}),
                 facing: C.deepMerge(ship.facing, {}),
                 velocity: C.deepMerge(ship.velocity, {}),
                 systems: {

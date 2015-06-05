@@ -11,6 +11,7 @@ var EventEmitter = require('events').EventEmitter,
     db = require('spacebox-common-native').db,
     config = require('./config.js'),
     stats = require('./stats.js'),
+    th = require('spacebox-common/src/three_helpers.js'),
     Q = require('q'),
     uuidGen = require('node-uuid')
 
@@ -65,7 +66,7 @@ extend(WorldState.prototype, {
     loadFromDBOnBoot: function() {
         return dao.loadIterator(function(obj) {
             worldStateStorage[obj.id] = obj.doc
-            //debug("loaded", obj)
+            debug("loaded", obj)
         })
     },
 
@@ -132,6 +133,7 @@ extend(WorldState.prototype, {
         var self = this,
             uuid = values.uuid
 
+        values.chunk = th.buildVectorBucket(values.position, config.game.chunk_size)
 
         return dao.insert(uuid, values).
         then(function() {

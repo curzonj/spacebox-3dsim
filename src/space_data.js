@@ -22,13 +22,6 @@ var self = module.exports = {
 
         return { x: o.x + rand(), y: o.y+ rand(), z: o.z+ rand() }
     },
-    buildVectorBucket: function (v, bucket) {
-        return {
-            x: Math.floor(v.x / bucket) * bucket,
-            y: Math.floor(v.y / bucket) * bucket,
-            z: Math.floor(v.z / bucket) * bucket
-        }
-    },
     spawn: function(ctx, uuid, blueprint, msg, fn) {
         ctx.log('3dsim', 'space_data.spawn', msg)
 
@@ -62,9 +55,6 @@ var self = module.exports = {
                 w: 1
             },
         })
-
-        obj.position_bucket = self.buildVectorBucket(obj.position,
-                                                     config.game.position_bucket)
 
         // If we did it above the blueprint merge
         // would over write it

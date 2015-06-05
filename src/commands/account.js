@@ -13,6 +13,9 @@ var worldState = require('../world_state.js'),
     solarsystems = require('../solar_systems.js')
 
 module.exports = {
+    "debug": function(ctx, msg, h) {
+        return h.visibility
+    },
     "resetAccount": function(ctx, msg, h) {
         return db.query("select * from space_objects where tombstone = 'f' and account_id = $1", h.auth.account).then(function(data) {
             return Q.all(data.map(function(row) {

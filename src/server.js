@@ -90,17 +90,15 @@ app.post('/specs/reset', function(req, res) {
 
 // TODO what happens to a structure's health when it's
 // upgraded?
+// TODO what about changes to structure modules?
 app.post('/spodb/:uuid', function(req, res) {
     var uuid = req.param('uuid')
     var blueprint_id = req.param('blueprint')
 
     Q.spread([C.getBlueprints(), C.http.authorize_req(req, true)], function(blueprints, auth) {
         var blueprint = blueprints[blueprint_id]
-
-        var obj = worldState.get(uuid)
-        // obj is the world state, DO NOT MODIFY
-        var new_obj = C.deepMerge(obj, {})
-        C.deepMerge(blueprint, new_obj)
+        var new_obj = JSON.parse(JSON.stringify(blueprint))
+        new_obj.blueprint = blueprint.uuid
         delete new_obj.uuid
 
         return worldState.queueChangeIn(uuid, new_obj)
