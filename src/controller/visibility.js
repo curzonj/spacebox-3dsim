@@ -9,9 +9,9 @@ var extend = require('extend'),
 
 var safeAttrs = [
     'type', 'position', 'chunk', 'velocity',
-    'facing', 'tombstone', 'account',
+    'facing', 'tombstone', 'account', 'tech',
     'model_name', 'model_scale', 'health',
-    'solar_system',
+    'solar_system', 'name', 'tech_type', 'size'
 ]
                 
 function distance3d(v1, v2) {
@@ -99,7 +99,7 @@ extend(Class.prototype, {
             return false
 
         var nearest = tree.nearest(point, 1)[0][0]
-        console.log('we have an object in '+point.solar_system+' and it is ', nearest, point, distance3d(nearest, point))
+        //console.log('we have an object in '+point.solar_system+' and it is ', nearest, point, distance3d(nearest, point))
         return (distance3d(nearest, point) <= nearest.range)
     },
     checkVisibility: function(key, patch) {
@@ -108,13 +108,13 @@ extend(Class.prototype, {
             this.privilegedKeys[key] === undefined)
             this.privilegedKeys[key] = true
 
-        console.log(this.points[key])
+        //console.log(this.points[key])
 
         var obj, newPoint,
             self = this,
             oldPoint = this.points[key],
             privileged = this.auth.priviliged || (this.privilegedKeys[key] !== undefined),
-            visibleSystem = this.visibleKeysBySystem[oldPoint.solar_system],
+            visibleSystem = (oldPoint === undefined ? undefined : this.visibleKeysBySystem[oldPoint.solar_system]),
             before = (visibleSystem !== undefined && visibleSystem[key] !== undefined),
             currently = before
 
@@ -124,6 +124,9 @@ extend(Class.prototype, {
         }
 
         function deleteVisibleKey() {
+            if (oldPoint === undefined)
+                return
+
             delete self.visibleKeysBySystem[oldPoint.solar_system][key]
             if (Object.keys(self.visibleKeysBySystem[oldPoint.solar_system]).length === 0)
                 delete self.visibleKeysBySystem[oldPoint.solar_system]
@@ -168,7 +171,7 @@ extend(Class.prototype, {
             changes = [],
             oldSystem = oldpoint.solar_system
 
-        console.log(oldpoint)
+        //console.log(oldpoint)
 
         // a point in this system moved, we have to recheck visibility on
         // all our objects
@@ -185,6 +188,9 @@ extend(Class.prototype, {
                 })
             }
         }
+
+        if (patch.tombstone === true)
+            return changes
 
         // updatePositions has already been run when we do this
         var point = this.points[key],
@@ -270,7 +276,7 @@ extend(Class.prototype, {
         var list = [],
             visible = this.checkVisibility(key, patch)
 
-        console.log('rewrote', key, patch, visible)
+        //console.log('rewrote', key, patch, visible)
 
         if (visible.privileged && visible.previous !== undefined) {
             list = this.moveVisibility(key, patch, visible.previous)

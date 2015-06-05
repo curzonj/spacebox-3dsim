@@ -98,12 +98,12 @@ function checkWormholeTTL() {
                 if (obj === undefined)
                     return
 
-                return worldState.queueChangeIn(obj.uuid, {
+                worldState.queueChangeIn(obj.uuid, {
                     tombstone: true
-                }).then(function() {
-                    console.log("cleaning up wormhole", row.id)
-                    return db.query("delete from wormholes where id = $1", [row.id])
                 })
+
+                console.log("cleaning up wormhole", row.id)
+                return db.query("delete from wormholes where id = $1", [row.id])
             })
         }))
     }).done()

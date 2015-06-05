@@ -142,9 +142,11 @@ module.exports = {
                         destination: destination,
                         direction: direction,
                         expires_at: row.expires_at
-                    }).then(function(spo_id) {
+                    }).tap(function(spo_id) {
                         return db.query("update wormholes set " + direction + "_id = $2 where id = $1", [row.id, spo_id])
                     })
+                } else {
+                    return spodb_id
                 }
             }))
         })
