@@ -45,8 +45,10 @@ function send_error(ctx, e, ws) {
 module.exports = {
     dispatch: function(msg, info) {
         var request_id = msg.request_id,
-            ctx = new C.TracingContext(request_id),
+            ctx = new C.TracingContext(),
             cmd = msg.command
+
+        ctx.prefix.push("req_id="+request_id)
 
         delete msg.request_id
 

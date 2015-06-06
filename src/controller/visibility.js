@@ -174,7 +174,9 @@ extend(Class.prototype, {
 
         // When the world is first loaded on a privilged connection,
         // it will trigger before visibleKeysBySystem has been
-        // populated for some reason FIXME
+        // populated for some reason. But that will be the case later
+        // when you undock from a structure that's not your so oh
+        // well
         if (this.visibleKeysBySystem[oldSystem] !== undefined) {
             // a point in this system moved, we have to recheck visibility on
             // all our objects
