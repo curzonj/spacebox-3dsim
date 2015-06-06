@@ -24,7 +24,7 @@ handlers.forEach(function(name) {
 
 });
 
-function send_error(ctx, e, ws) {
+function send_error(ctx, e, ws, request_id) {
     ctx.log('3dsim', 'error handling command: ', e, e.stack)
 
     var details
@@ -34,12 +34,13 @@ function send_error(ctx, e, ws) {
     }
 
     ws.send({
-        type: 'error',
-        request_id: ctx.id,
-        message: e.toString(),
-        details: details
+        type: 'result',
+        request_id: request_id,
+        error: {
+            message: e.toString(),
+            details: details
+        }
     })
-
 }
 
 module.exports = {
@@ -56,20 +57,21 @@ module.exports = {
 
         try {
             if (processors.hasOwnProperty(cmd) && typeof processors[cmd] == 'function') {
-                Q(processors[cmd](ctx, msg, info)).fail(function(e) {
-                    send_error(ctx, e, info)
-                }).then(function(result) {
+                Q(processors[cmd](ctx, msg, info)).
+                then(function(result) {
                     info.send({
                         type: "result",
                         request_id: request_id,
                         result: result
                     })
+                }).fail(function(e) {
+                    send_error(ctx, e, info, request_id)
                 }).done()
             } else {
                 throw ("invalid command: " + cmd);
             }
         } catch (e) {
-            send_error(ctx, e, info)
+            send_error(ctx, e, info, request_id)
         }
     }
 };

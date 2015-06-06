@@ -62,7 +62,7 @@ extend(WSController.prototype, {
                 console.log("ignoring command on unauthenticated socket")
             }
         } catch (e) {
-            console.log('error handling command', e, e.stack)
+            console.log('fatal error handling command', e, e.stack)
         }
     },
     sendState: function(ts, key, patch) {
