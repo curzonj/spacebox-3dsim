@@ -17,12 +17,11 @@ var position1 = new THREE.Vector3()
 var position2 = new THREE.Vector3()
 
 function spawnVessel(ctx, msg, h, fn) {
-    return C.getBlueprints().then(function(blueprints) {
+    return C.getBlueprint(msg.blueprint).then(function(blueprint) {
         var account,
             target,
             next = Q(null),
-            uuid = msg.uuid || uuidGen.v1(),
-            blueprint = blueprints[msg.blueprint]
+            uuid = msg.uuid || uuidGen.v1()
 
         if (blueprint === undefined ||
             msg.solar_system === undefined ||
@@ -74,16 +73,17 @@ module.exports = {
     'spawnStarter': function(ctx, msg, h) {
         var uuid = uuidGen.v1()
 
-        return Q.spread([
-            solarsystems.getSpawnSystemId(),
-            C.getBlueprints(),
-            C.request('tech', 'POST', 200, '/getting_started', {
-                uuid: uuid,
-                account: h.auth.account
-            }, ctx)
-        ], function(solar_system, blueprints, data) {
-            var blueprint = blueprints[data.blueprint_id]
-
+        return C.request('tech', 'POST', 200, '/getting_started', {
+            uuid: uuid,
+            account: h.auth.account
+        }, ctx).then(function(data) {
+            console.log('getting_started', data)
+            return Q.all([
+                solarsystems.getSpawnSystemId(),
+                C.getBlueprint(data.blueprint_id),
+                data
+            ])
+        }).spread(function(solar_system, blueprint, data) {
             return space_data.spawn(ctx, uuid, blueprint, {
                 modules: data.modules,
                 account: h.auth.account,

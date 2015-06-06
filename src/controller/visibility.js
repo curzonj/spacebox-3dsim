@@ -81,7 +81,6 @@ extend(Class.prototype, {
 
         var data = worldState.scanDistanceFrom()
 
-        //console.log('loading connection worldstate', this.auth.account, data)
         data.forEach(function(obj) {
             if (obj.account == self.auth.account)
                 self.privilegedKeys[obj.uuid] = true
@@ -108,17 +107,17 @@ extend(Class.prototype, {
             this.privilegedKeys[key] === undefined)
             this.privilegedKeys[key] = true
 
-        //console.log(this.points[key])
+        //console.log('oldpoint', key, this.points[key])
 
         var obj, newPoint,
             self = this,
             oldPoint = this.points[key],
-            privileged = this.auth.priviliged || (this.privilegedKeys[key] !== undefined),
+            privileged = this.auth.privileged || (this.privilegedKeys[key] !== undefined),
             visibleSystem = (oldPoint === undefined ? undefined : this.visibleKeysBySystem[oldPoint.solar_system]),
             before = (visibleSystem !== undefined && visibleSystem[key] !== undefined),
             currently = before
 
-        if (patch.tombstone !== undefined || patch.solar_system !== undefined || patch.chunk !== undefined) {
+        if (patch.chunk !== undefined || patch.solar_system !== undefined || patch.tombstone !== undefined) {
             this.updatePositions(key, patch)
             newPoint = this.points[key]
         }
@@ -142,7 +141,7 @@ extend(Class.prototype, {
 
             if (before)
                 deleteVisibleKey()
-        } else if (patch.solar_system !== undefined || patch.chunk !== undefined) {
+        } else if (patch.chunk !== undefined || patch.solar_system !== undefined) {
             currently = privileged || this.visibilityTest(this.points[key])
         }
 
@@ -173,19 +172,24 @@ extend(Class.prototype, {
 
         //console.log(oldpoint)
 
-        // a point in this system moved, we have to recheck visibility on
-        // all our objects
-        for (var v in this.visibleKeysBySystem[oldSystem]) {
-            if (key !== v && !this.visibilityTest(this.points[v])) {
-                delete this.visibleKeys[v]
+        // When the world is first loaded on a privilged connection,
+        // it will trigger before visibleKeysBySystem has been
+        // populated for some reason FIXME
+        if (this.visibleKeysBySystem[oldSystem] !== undefined) {
+            // a point in this system moved, we have to recheck visibility on
+            // all our objects
+            for (var v in this.visibleKeysBySystem[oldSystem]) {
+                if (key !== v && !this.visibilityTest(this.points[v])) {
+                    delete this.visibleKeys[v]
 
-                changes.push({
-                    key: v,
-                    values: {
-                        tombstone_cause: 'own_visibility',
-                        tombstone: true
-                    }
-                })
+                    changes.push({
+                        key: v,
+                        values: {
+                            tombstone_cause: 'own_visibility',
+                            tombstone: true
+                        }
+                    })
+                }
             }
         }
 
@@ -196,23 +200,33 @@ extend(Class.prototype, {
         var point = this.points[key],
             tree = this.pointTrees[point.solar_system]
 
-        // TODO the number of objects to see should
-        // be a sensors limit
-        tree.nearest(point, 10000, point.range).forEach(function(search_result) {
-            var search_point = search_result[0]
-            if (self.visibilityTest(search_point)) {
-                var visibleSystem = self.visibleKeysBySystem[search_point.solar_system]
-                if (visibleSystem === undefined)
-                    visibleSystem = self.visibleKeysBySystem[search_point.solar_system] = {}
-                visibleSystem[search_point.uuid] = true
+        //console.log('newpoint', point, 'patch', patch)
 
-                var obj = worldState.get(search_point.uuid)
-                changes.push({
-                    key: obj.uuid,
-                    values: self.filterProperties(obj.uuid, obj)
-                })
-            }
-        })
+        // If we have not seen any ships other than our own in this
+        // system, there won't be any pointTree for it
+        if (tree !== undefined) {
+            // TODO the number of objects to see should
+            // be a sensors limit
+            tree.nearest(point, 10000, point.range).forEach(function(search_result) {
+                var search_point = search_result[0]
+                var visibleSystem = self.visibleKeysBySystem[search_point.solar_system]
+
+                if (visibleSystem !== undefined &&
+                    visibleSystem[search_point.uuid] !== true &&
+                    self.visibilityTest(search_point)) {
+
+                    if (visibleSystem === undefined)
+                        visibleSystem = self.visibleKeysBySystem[search_point.solar_system] = {}
+                    visibleSystem[search_point.uuid] = true
+
+                    var obj = worldState.get(search_point.uuid)
+                    changes.push({
+                        key: obj.uuid,
+                        values: self.filterProperties(obj.uuid, obj)
+                    })
+                }
+            })
+        }
 
         return changes
     },
@@ -255,7 +269,8 @@ extend(Class.prototype, {
                 x: b.x, y: b.y, z: b.z, 
                 range: (privileged ? 10: 0),
                 uuid: key,
-                solar_system: patch.solar_system
+                // Solar system might not have changed if it only moved chunks
+                solar_system: patch.solar_system || point.solar_system
             }
 
             tree.insert(point)
@@ -276,9 +291,14 @@ extend(Class.prototype, {
         var list = [],
             visible = this.checkVisibility(key, patch)
 
-        //console.log('rewrote', key, patch, visible)
+        //console.log('rewrote', this.auth, key, patch, visible)
 
-        if (visible.privileged && visible.previous !== undefined) {
+        if (this.privilegedKeys[key] === true &&
+            visible.previous !== undefined && (
+                patch.chunk !== undefined ||
+                patch.solar_system !== undefined ||
+                patch.tombstone !== undefined
+            )) {
             list = this.moveVisibility(key, patch, visible.previous)
         }
 

@@ -70,20 +70,21 @@ var self = module.exports = {
             }
         }
 
-        return C.getBlueprints().then(function(blueprints) {
+        return Q.fcall(function() {
             if (Array.isArray(msg.modules))
-                msg.modules.forEach(function(uuid) {
-                    var bp = blueprints[uuid],
-                        fn = self['build_'+bp.tech_type+'_system']
+                return Q.all(msg.modules.map(function(uuid) {
+                    return C.getBlueprint(uuid).then(function(bp) {
+                        var fn = self['build_'+bp.tech_type+'_system']
 
-                    if (typeof fn === 'function')
-                        obj.systems[bp.tech_type] = fn(obj.systems[bp.tech_type], bp)
-                })
+                        if (typeof fn === 'function')
+                            obj.systems[bp.tech_type] = fn(obj.systems[bp.tech_type], bp)
+                    })
+                }))
         }).then(function() {
             ctx.debug('3dsim', obj)
             return worldState.addObject(obj).then(function(uuid) {
                 ctx.log('3dsim', "built space object", {
-                    blueprint: msg.blueprint,
+                    blueprint: blueprint,
                     id: uuid
                 })
 

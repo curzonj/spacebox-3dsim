@@ -95,8 +95,7 @@ app.post('/spodb/:uuid', function(req, res) {
     var uuid = req.param('uuid')
     var blueprint_id = req.param('blueprint')
 
-    Q.spread([C.getBlueprints(), C.http.authorize_req(req, true)], function(blueprints, auth) {
-        var blueprint = blueprints[blueprint_id]
+    Q.spread([C.getBlueprint(blueprint_id), C.http.authorize_req(req, true)], function(blueprint, auth) {
         var new_obj = JSON.parse(JSON.stringify(blueprint))
         new_obj.blueprint = blueprint.uuid
         delete new_obj.uuid

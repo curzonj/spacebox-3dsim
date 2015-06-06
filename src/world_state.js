@@ -107,10 +107,6 @@ extend(WorldState.prototype, {
         }
     },
 
-    getHack: function() {
-        return worldStateStorage
-    },
-
     scanDistanceFrom: function(_, type) {
         var list = this.scanKeysDistanceFrom(undefined).map(function(k) {
             return this.get(k)
