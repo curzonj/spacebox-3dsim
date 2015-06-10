@@ -4,7 +4,7 @@ var extend = require('extend'),
     Q = require('q'),
     C = require('spacebox-common'),
     config = require('../config.js'),
-    worldState = require('../world_state.js'),
+    worldState = require('../redisWorldState.js'),
     kdTree = require('../../vendor/kdTree.js')
 
 var safeAttrs = [
@@ -13,25 +13,26 @@ var safeAttrs = [
     'model_name', 'model_scale', 'health',
     'solar_system', 'name', 'tech_type', 'size'
 ]
-                
+
 function distance3d(v1, v2) {
     var dx = v1.x - v2.x,
         dy = v1.y - v2.y,
         dz = v1.z - v2.z
 
-    return Math.sqrt(dx*dx+dy*dy+dz*dz)
+    return Math.sqrt(dx * dx + dy * dy + dz * dz)
 }
 
 function distance3dRange(v1, v2) {
     var base = distance3d(v1, v2),
-        r1 = 0, r2 = 0
+        r1 = 0,
+        r2 = 0
 
     if (v1.range !== undefined)
         r1 = v1.range
     if (v1.range !== undefined)
         r1 = v1.range
 
-    return base - r1 -r2
+    return base - r1 - r2
 }
 
 
@@ -40,7 +41,7 @@ var Class = module.exports = function(auth) {
 
     // pointTrees of points indexed by solar system
     this.pointTrees = {
-        dimensions: [ "x", "y", "z" ],
+        dimensions: ["x", "y", "z"],
         fn: distance3d
     }
 
@@ -59,7 +60,7 @@ var Class = module.exports = function(auth) {
     this.privilegedKeys = {} // == true
 
     this.ourTrees = {
-        dimensions: [ "x", "y", "z", "range" ],
+        dimensions: ["x", "y", "z", "range"],
         fn: distance3dRange
     }
 }
@@ -79,16 +80,20 @@ extend(Class.prototype, {
     loadInitialWorldState: function(fn) {
         var self = this;
 
-        var data = worldState.scanDistanceFrom()
+        var data = worldState.getAllKeys()
 
-        data.forEach(function(obj) {
+        Object.keys(data).forEach(function(k) {
+            var obj = data[k]
+
             if (obj.account == self.auth.account)
                 self.privilegedKeys[obj.uuid] = true
 
             self.updatePositions(obj.uuid, obj)
         })
 
-        data.forEach(fn)
+        Object.keys(data).forEach(function(k) {
+            fn(data[k])
+        })
     },
     visibilityTest: function(point) {
         var self = this,
@@ -98,7 +103,7 @@ extend(Class.prototype, {
             return false
 
         var nearest = tree.nearest(point, 1)[0][0]
-        //console.log('we have an object in '+point.solar_system+' and it is ', nearest, point, distance3d(nearest, point))
+            //console.log('we have an object in '+point.solar_system+' and it is ', nearest, point, distance3d(nearest, point))
         return (distance3d(nearest, point) <= nearest.range)
     },
     checkVisibility: function(key, patch) {
@@ -166,7 +171,7 @@ extend(Class.prototype, {
         }
     },
     moveVisibility: function(key, patch, oldpoint) {
-        var self =this,
+        var self = this,
             changes = [],
             oldSystem = oldpoint.solar_system
 
@@ -257,7 +262,7 @@ extend(Class.prototype, {
             delete this.points[key]
         } else {
             // The point has moved solar systems
-            if(patch.solar_system !== undefined) {
+            if (patch.solar_system !== undefined) {
                 tree = treeSet[patch.solar_system]
 
                 if (tree === undefined) {
@@ -268,8 +273,10 @@ extend(Class.prototype, {
 
             var b = patch.position
             point = this.points[key] = {
-                x: b.x, y: b.y, z: b.z, 
-                range: (privileged ? 10: 0),
+                x: b.x,
+                y: b.y,
+                z: b.z,
+                range: (privileged ? 10 : 0),
                 uuid: key,
                 // Solar system might not have changed if it only moved chunks
                 solar_system: patch.solar_system || point.solar_system
@@ -293,7 +300,7 @@ extend(Class.prototype, {
         var list = [],
             visible = this.checkVisibility(key, patch)
 
-        //console.log('rewrote', this.auth, key, patch, visible)
+        //console.log('rewriteProperties', this.auth, key, patch, visible)
 
         if (this.privilegedKeys[key] === true &&
             visible.previous !== undefined && (

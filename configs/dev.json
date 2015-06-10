@@ -1,13 +1,4 @@
 {
   "tickInterval": 80,
-  "chunk_size": 5,
-  "maximum_vessels": 50,
-  "minumim_solar_systems": 10,
-  "minimum_count_wormholes": 4,
-  "maximum_count_wormholes": 6,
-  "wormhole_lifetime": "30 seconds",
-  "wormhole_jump_range": 5,
-  "wormhole_range": { "min": 10, "max": 20 },
-  "spawn_range": { "min": 1, "max": 2 },
-  "docking_range": 3
+  "chunk_size": 5
 }

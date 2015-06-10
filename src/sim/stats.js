@@ -1,6 +1,9 @@
 'use strict';
 
-var measured = require('measured'),
+var Q = require('q'),
+    redisLib = require('promise-redis')(Q.Promise),
+    redis = redisLib.createClient(),
+    measured = require('measured'),
     stats = measured.createCollection()
 
 var self = module.exports = {
@@ -16,5 +19,8 @@ var self = module.exports = {
     gameLoop: stats.timer('gameLoop'),
     gameLoopJitter: stats.histogram('gameLoopJitter'),
     gameLoopDelay: stats.histogram('gameLoopDelay'),
-    applyChangeList: stats.timer('applyChangeList'),
 }
+
+setInterval(function() {
+    redis.set('stats', JSON.stringify(stats)).done()
+}, 5000)

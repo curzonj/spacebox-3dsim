@@ -5,18 +5,20 @@ var EventEmitter = require('events').EventEmitter,
     util = require('util'),
     uriUtils = require('url'),
     WebSocket = require('ws'),
-    worldState = require('../world_state.js'),
-    dispatcher = require('../commands/dispatcher.js'),
+    worldState = require('../redisWorldState.js'),
+    dispatcher = require('./commands'),
     Visibility = require('./visibility.js'),
     Q = require('q'),
     C = require('spacebox-common')
+
+worldState.loadWorld()
 
 var WSController = module.exports = function(ws) {
     this.ws = ws
     this.auth = ws.upgradeReq.authentication
     try {
         this.onConnectionOpen()
-    } catch(e) {
+    } catch (e) {
         console.log('fatal error setting up connection')
         console.log(e.stack)
         ws.close()
@@ -33,7 +35,7 @@ extend(WSController.prototype, {
     },
     onConnectionOpen: function() {
         this.setupConnectionCallbacks()
-        console.log("connected "+this.auth.account)
+        console.log("connected " + this.auth.account)
 
         this.visibility = new Visibility(this.auth)
 
@@ -45,7 +47,9 @@ extend(WSController.prototype, {
         worldState.addListener(this)
 
         this.sendWorldState()
-        this.send({ type: 'connectionReady' })
+        this.send({
+            type: 'connectionReady'
+        })
         console.log('world state sync complete')
     },
     onConnectionClosed: function() {
@@ -70,6 +74,8 @@ extend(WSController.prototype, {
         if (values.length === 0)
             return
 
+        //console.log('sendState.values', values)
+
         this.send({
             type: "state",
             timestamp: ts,
@@ -85,7 +91,7 @@ extend(WSController.prototype, {
     },
     sendWorldState: function() {
         console.log('sending world state')
-        // TODO the worldstate itself should have a better sense of time
+            // TODO the worldstate itself should have a better sense of time
         var ts = worldState.currentTick()
 
         this.visibility.loadInitialWorldState(function(obj) {
@@ -93,6 +99,20 @@ extend(WSController.prototype, {
         }.bind(this))
     },
     onWorldStateChange: function(ts, key, patch) {
+        //console.log(key, patch)
         this.sendState(ts, key, patch)
+    },
+    onWorldTick: function(msg) {
+        var self = this,
+            currentTick = msg.ts
+
+        Object.keys(msg.changes).forEach(function(uuid) {
+            try {
+                self.onWorldStateChange(currentTick, uuid, msg.changes[uuid])
+            } catch (e) {
+                console.log("onWorldStateChange failed", uuid, msg.changes[uuid], e, e.stack)
+                process.exit()
+            }
+        })
     }
 })

@@ -3,26 +3,10 @@
 var Q = require('q'),
     C = require('spacebox-common')
 
-// TODO some of these are restricted and need to be authenticated
-// TODO unrestricted commands still need to go the account's ships
-// TODO need a standard way to validate messages against a schema
-var handlers = ["spawn", "target", "scanning", "account"];
 var processors = {};
-
-handlers.forEach(function(name) {
-    var fns = require('./' + name + '.js');
-
-    if (typeof fns == 'function') {
-        processors[name] = fns;
-    } else {
-        for (var command in fns) {
-            if (fns.hasOwnProperty(command)) {
-                processors[command] = fns[command];
-            }
-        }
-    }
-
-});
+processors.debug = function(ctx, msg, h) {
+    return h.visibility
+}
 
 function send_error(ctx, e, ws, request_id) {
     ctx.log('3dsim', 'error handling command: ', e, e.stack)
@@ -49,7 +33,7 @@ module.exports = {
             ctx = new C.TracingContext(),
             cmd = msg.command
 
-        ctx.prefix.push("req_id="+request_id)
+        ctx.prefix.push("req_id=" + request_id)
 
         delete msg.request_id
 

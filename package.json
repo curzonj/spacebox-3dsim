@@ -9,21 +9,24 @@
     "spacebox-common": "curzonj/spacebox-nodejs-common",
     "spacebox-common-native": "curzonj/spacebox-nodejs-common-native",
     "measured": "latest",
+    "hiredis": "latest",
+    "redis": "latest",
+    "promise-redis": "latest",
     "express": "latest",
     "ws": "latest",
-    "cors": "latest",
     "extend": "latest",
     "morgan": "~1.3.0",
     "body-parser": "~1.8.1",
     "debug": "~2.0.0",
     "q": "~1.3.0",
     "node-uuid": "latest",
-    "postgrator": "latest",
     "three": "latest"
   },
   "devDependencies": {
     "require-dir": "^0.1.0",
     "gulp-jsbeautifier": "latest",
+    "gulp-jshint": "latest",
+    "jshint-stylish": "latest",
     "gulp": "^3.8.7"
   },
   "jshintConfig": {

@@ -25,13 +25,13 @@ var position1 = new THREE.Vector3()
 var position2 = new THREE.Vector3()
 
 worldState.onWorldTick(function(tickMs, ship) {
-    if (ship.type !== 'vessel' )
-        return 
+    if (ship.type !== 'vessel')
+        return
     var system = ship.systems.weapon
 
     // TODO Should make a better api for handling a subsystem state
     if (system === undefined || system.state !== "shoot")
-        return 
+        return
 
     var target = worldState.get(system.target)
 

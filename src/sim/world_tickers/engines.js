@@ -3,7 +3,7 @@
 var CONST_fpErrorMargin = 0.000001
 
 var worldState = require('../world_state.js'),
-    config = require('../config.js'),
+    config = require('../../config.js'),
     th = require('spacebox-common/src/three_helpers.js'),
     C = require('spacebox-common'),
     THREE = require('three')
@@ -13,8 +13,8 @@ function buildCurrentDirection(direction, orientationQ) {
 }
 
 function assertVector(v) {
-    if ( v === undefined || v === null || isNaN(v.x) || isNaN(v.y) || isNaN(v.z) )
-        throw new Error("invalid vector: "+JSON.stringify(v))
+    if (v === undefined || v === null || isNaN(v.x) || isNaN(v.y) || isNaN(v.z))
+        throw new Error("invalid vector: " + JSON.stringify(v))
 
     return v
 }
@@ -81,12 +81,12 @@ var move_to_point = function() {
             brakingTheta = currentDirection.angleTo(brakingOrientation)
             brakingLookAt = brakingOrientation.add(position)
             thetaVelocityVsTarget = velocityV.angleTo(interceptCourse)
-            
+
             /// calculate what what speed we need to brake at given our current distance
             maxBrakeVelocity = maxThrustForMath * (
                 Math.sqrt(
-                        0.25 + 
-                        ((2 * d) / maxThrustForMath)
+                    0.25 +
+                    ((2 * d) / maxThrustForMath)
                 ) + 0.5)
         } else if (d < CONST_fpErrorMargin) {
             //console.log("moveTo complete")
@@ -110,11 +110,11 @@ var move_to_point = function() {
             //// calculate max velocity allowable to the target
             var i1 = (brakingTheta / maxTheta) - 0.5 // how many turns will it take to turn to braking
             var maxVtoTarget = maxThrustForMath * (
-                Math.sqrt(
-                    Math.pow(i1, 2) +
-                    ((2 * d) / maxThrustForMath)
-                ) - i1)
-            //((-1 * i1) + Math.sqrt(Math.pow(i1, 2) + (8 * (d / maxThrust)))) / (4 / maxThrust)
+                    Math.sqrt(
+                        Math.pow(i1, 2) +
+                        ((2 * d) / maxThrustForMath)
+                    ) - i1)
+                //((-1 * i1) + Math.sqrt(Math.pow(i1, 2) + (8 * (d / maxThrust)))) / (4 / maxThrust)
             var theta = currentDirection.angleTo(interceptCourse) // angle in rads
 
             // TODO allow non-max thrusts
@@ -369,7 +369,7 @@ var funcs = {
             th.buildQuaternion(orientationQ, ship.facing)
             buildCurrentDirection(currentDirection, orientationQ)
             var theta = currentDirection.angleTo(vToTarget) // angle in rads
-           
+
             // CONST_fpErrorMargin is not good enough here
             // this function will constantly trigger if you don't
             // set lookAt null, but you can't use the CONST_fpErrorMargin
@@ -461,7 +461,7 @@ var funcs = {
 
 
             velocityV.add(thrustVector)
-            //console.log("applying", thrust, "along", currentDirection, "to", ship.velocity, "resulting", velocityV, velocityV.length())
+                //console.log("applying", thrust, "along", currentDirection, "to", ship.velocity, "resulting", velocityV, velocityV.length())
 
             if (velocityV.length() < CONST_fpErrorMargin) {
                 console.log("velocity too small, stopping")
@@ -499,8 +499,8 @@ var funcs = {
         }
     }(),
     worldTick: function(tickMs, ship) {
-        if (ship.type !== 'vessel' )
-            return 
+        if (ship.type !== 'vessel')
+            return
         if (ship.systems.engine === undefined)
             return
 
@@ -551,15 +551,17 @@ var funcs = {
         cmds.forEach(function(cmd) {
             try {
                 var result = funcs["handle_" + cmd](pseudoState)
-                if (result !== undefined && result !== null) 
+                if (result !== undefined && result !== null)
                     applyPatch(result)
-            } catch(e) {
+            } catch (e) {
                 console.log(e.stack)
-                throw new Error("in handle_"+cmd+": "+e.message)
+                throw new Error("in handle_" + cmd + ": " + e.message)
             }
         })
 
-        return { patch: patch }
+        return {
+            patch: patch
+        }
     }
 }
 
