@@ -11,7 +11,7 @@ var EventEmitter = require('events').EventEmitter,
     Q = require('q'),
     C = require('spacebox-common')
 
-var ctx = C.logging.create('firehose')
+var ctx = C.logging.create()
 var WSController = module.exports = function(ws) {
     this.ws = ws
     this.auth = ws.upgradeReq.authentication

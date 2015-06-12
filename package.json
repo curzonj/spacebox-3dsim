@@ -3,15 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "engines": {
-    "node": "0.10.x"
+    "node": "0.11.x"
   },
   "dependencies": {
     "spacebox-common": "curzonj/spacebox-nodejs-common",
     "spacebox-common-native": "curzonj/spacebox-nodejs-common-native",
     "measured": "latest",
-    "hiredis": "latest",
-    "redis": "latest",
-    "promise-redis": "latest",
     "express": "latest",
     "ws": "latest",
     "extend": "latest",

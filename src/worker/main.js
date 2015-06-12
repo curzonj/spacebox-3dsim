@@ -1,12 +1,15 @@
 'use strict';
 
-var worldState = require('spacebox-common-native/lib/redis-state'),
-    redis = require('spacebox-common-native').buildRedis(),
-    Q = require('q'),
-    C = require('spacebox-common'),
-    ctx = C.logging.create('sim_worker')
+var Q = require('q'),
+    C = require('spacebox-common')
 
-worldState.addListener({
+C.logging.configure('sim_worker')
+
+var redisState = require('spacebox-common-native/lib/redis-state'),
+    redis = require('spacebox-common-native').buildRedis(),
+    ctx = C.logging.create()
+
+redisState.addListener({
     onWorldTick: function(msg) {
         var changeSet = msg.changes
 
@@ -20,7 +23,7 @@ worldState.addListener({
                 } else {
                     return Q.all([
                         redis.sadd('alive', k),
-                        redis.set(k, JSON.stringify(worldState.get(k))),
+                        redis.set(k, JSON.stringify(redisState.get(k))),
                     ])
                 }
             }).then(function() {
@@ -30,4 +33,4 @@ worldState.addListener({
     }
 })
 
-worldState.loadWorld()
+redisState.loadWorld()

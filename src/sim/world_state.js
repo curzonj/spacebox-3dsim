@@ -10,7 +10,7 @@ var EventEmitter = require('events').EventEmitter,
     Q = require('q')
 
 var redis = require('spacebox-common-native').buildRedis(),
-    ctx = C.logging.create('3dsim')
+    ctx = C.logging.create()
 
 var worldTickers = [],
     eventReducers = {},

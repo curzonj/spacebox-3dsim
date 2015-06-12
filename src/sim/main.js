@@ -3,6 +3,8 @@
 var Q = require('q'),
     C = require('spacebox-common')
 
+C.logging.configure('3dsim')
+
 require("./world_tickers/load_all.js")
 
 var worldState = require('./world_state.js')

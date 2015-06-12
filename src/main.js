@@ -8,6 +8,7 @@ var WebSockets = require("ws"),
     worldState = require('spacebox-common-native/lib/redis-state'),
     C = require('spacebox-common')
 
+C.logging.configure('firehose')
 C.configure({
     AUTH_URL: process.env.AUTH_URL,
     credentials: process.env.INTERNAL_CREDS,
