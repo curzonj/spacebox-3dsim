@@ -30,7 +30,7 @@ function send_error(ctx, e, ws, request_id) {
 module.exports = {
     dispatch: function(msg, info) {
         var request_id = msg.request_id,
-            ctx = new C.TracingContext(),
+            ctx = info.ctx,
             cmd = msg.command
 
         ctx.prefix.push("req_id=" + request_id)

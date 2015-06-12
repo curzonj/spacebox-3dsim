@@ -4,7 +4,7 @@ var extend = require('extend'),
     Q = require('q'),
     C = require('spacebox-common'),
     config = require('../config.js'),
-    worldState = require('../redisWorldState.js'),
+    worldState = require('spacebox-common-native/lib/redis-state'),
     kdTree = require('../../vendor/kdTree.js')
 
 var safeAttrs = [

@@ -5,22 +5,22 @@ var EventEmitter = require('events').EventEmitter,
     util = require('util'),
     uriUtils = require('url'),
     WebSocket = require('ws'),
-    worldState = require('../redisWorldState.js'),
+    worldState = require('spacebox-common-native/lib/redis-state'),
     dispatcher = require('./commands'),
     Visibility = require('./visibility.js'),
     Q = require('q'),
     C = require('spacebox-common')
 
-worldState.loadWorld()
-
+var ctx = C.logging.create('firehose')
 var WSController = module.exports = function(ws) {
     this.ws = ws
     this.auth = ws.upgradeReq.authentication
+    this.ctx = ctx.child()
+
     try {
         this.onConnectionOpen()
     } catch (e) {
-        console.log('fatal error setting up connection')
-        console.log(e.stack)
+        this.ctx.error({err: e}, 'fatal error setting up connection')
         ws.close()
     }
 }
@@ -35,7 +35,7 @@ extend(WSController.prototype, {
     },
     onConnectionOpen: function() {
         this.setupConnectionCallbacks()
-        console.log("connected " + this.auth.account)
+        this.ctx.info({ account: this.auth.account }, "ws.connected")
 
         this.visibility = new Visibility(this.auth)
 
@@ -50,12 +50,12 @@ extend(WSController.prototype, {
         this.send({
             type: 'connectionReady'
         })
-        console.log('world state sync complete')
+        this.ctx.debug('world state sync complete')
     },
     onConnectionClosed: function() {
         worldState.removeListener(this)
 
-        console.log('disconnected')
+        this.ctx.info('disconnected')
     },
     onWSMessageReceived: function(message) {
         try {
@@ -63,10 +63,10 @@ extend(WSController.prototype, {
                 var parsed = JSON.parse(message)
                 dispatcher.dispatch(parsed, this)
             } else {
-                console.log("ignoring command on unauthenticated socket")
+                this.ctx.warn("ignoring command on unauthenticated socket")
             }
         } catch (e) {
-            console.log('fatal error handling command', e, e.stack)
+            this.ctx.error({ err: e, command: message }, 'fatal error handling command')
         }
     },
     sendState: function(ts, key, patch) {
@@ -83,14 +83,15 @@ extend(WSController.prototype, {
         })
     },
     send: function(obj) {
+        this.ctx.trace({ send: obj }, 'ws.send')
         if (this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify(obj))
         } else {
-            console.log("failed to send message, websocket closed or closing")
+            this.ctx.error({ state: this.ws.readyState }, "failed to send message, websocket closed or closing")
         }
     },
     sendWorldState: function() {
-        console.log('sending world state')
+        this.ctx.debug('sending world state')
             // TODO the worldstate itself should have a better sense of time
         var ts = worldState.currentTick()
 

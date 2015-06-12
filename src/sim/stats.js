@@ -1,8 +1,6 @@
 'use strict';
 
-var Q = require('q'),
-    redisLib = require('promise-redis')(Q.Promise),
-    redis = redisLib.createClient(),
+var redis = require('spacebox-common-native').buildRedis(),
     measured = require('measured'),
     stats = measured.createCollection()
 

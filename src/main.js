@@ -3,9 +3,9 @@
 var WebSockets = require("ws"),
     http = require("http"),
     express = require("express"),
-    morgan = require('morgan'),
     bodyParser = require('body-parser'),
     uriUtils = require('url'),
+    worldState = require('spacebox-common-native/lib/redis-state'),
     C = require('spacebox-common')
 
 C.configure({
@@ -37,9 +37,12 @@ var WebSocketServer = WebSockets.Server,
 
 var Controller = require('./controller/ws.js')
 
-server.listen(port)
-wss.on('connection', function(ws) {
-    new Controller(ws)
+worldState.loadWorld().then(function() {
+    server.listen(port)
+    wss.on('connection', function(ws) {
+        new Controller(ws)
+    })
+
+    console.log('server ready')
 })
 
-console.log('server ready')

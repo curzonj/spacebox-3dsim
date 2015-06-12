@@ -3,22 +3,14 @@
 var EventEmitter = require('events').EventEmitter,
     extend = require('extend'),
     util = require('util'),
-    npm_debug = require('debug'),
-    log = npm_debug('3dsim:info'),
-    error = npm_debug('3dsim:error'),
-    debug = npm_debug('3dsim:debug'),
     C = require('spacebox-common'),
-    merge = require('../state_merge'),
+    merge = require('spacebox-common-native/lib/state_merge'),
     config = require('../config.js'),
     stats = require('./stats.js'),
-    Q = require('q'),
-    redisLib = require("redis")
+    Q = require('q')
 
-var redis = function() {
-    var promiseFactory = require("q").Promise,
-        lib = require('promise-redis')(promiseFactory)
-    return lib.createClient()
-}()
+var redis = require('spacebox-common-native').buildRedis(),
+    ctx = C.logging.create('3dsim')
 
 var worldTickers = [],
     eventReducers = {},
@@ -131,7 +123,7 @@ module.exports = {
             ltrim("commands", len, -1).
             exec().
             then(function(replies) {
-                console.log(replies)
+                ctx.trace({ commands: replies }, 'redis.commands')
                 return replies[0].map(function(s) {
                     try {
                         return JSON.parse(s)

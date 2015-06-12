@@ -1,6 +1,7 @@
 'use strict';
 
-var Q = require('q')
+var Q = require('q'),
+    C = require('spacebox-common')
 
 require("./world_tickers/load_all.js")
 
