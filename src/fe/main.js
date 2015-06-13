@@ -36,7 +36,7 @@ var WebSocketServer = WebSockets.Server,
         }
     })
 
-var Controller = require('./controller/ws.js')
+var Controller = require('./ws.js')
 
 worldState.loadWorld().then(function() {
     server.listen(port)

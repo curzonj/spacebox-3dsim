@@ -2,8 +2,8 @@
 
 var CONST_fpErrorMargin = 0.000001
 
-var worldState = require('../world_state.js'),
-    config = require('../../config.js'),
+var config = require('../../config.js'),
+    worldState = require('../worldState'),
     th = require('spacebox-common/src/three_helpers.js'),
     C = require('spacebox-common'),
     THREE = require('three')
@@ -565,4 +565,6 @@ var funcs = {
     }
 }
 
-worldState.onWorldTick(funcs.worldTick)
+module.exports = function(gameLoop) {
+    gameLoop.onWorldTick(funcs.worldTick)
+}

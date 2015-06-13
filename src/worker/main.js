@@ -13,8 +13,8 @@ redisState.addListener({
     onWorldTick: function(msg) {
         var changeSet = msg.changes
 
-        Object.keys(changeSet).forEach(function(k) {
-            Q.fcall(function() {
+        return Q.all(Object.keys(changeSet).map(function(k) {
+            return Q.fcall(function() {
                 if (changeSet[k].tombstone === true) {
                     return Q.all([
                         redis.srem('alive', k),
@@ -28,8 +28,8 @@ redisState.addListener({
                 }
             }).then(function() {
                 ctx.trace({ uuid: k, patch: changeSet[k], timestamp: msg.ts }, 'updated redis')
-            }).done()
-        })
+            })
+        }))
     }
 })
 
