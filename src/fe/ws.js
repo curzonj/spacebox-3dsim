@@ -8,6 +8,7 @@ var EventEmitter = require('events').EventEmitter,
     worldState = require('spacebox-common-native/lib/redis-state'),
     dispatcher = require('./commands'),
     Visibility = require('./visibility.js'),
+    WTF = require('wtf-shim'),
     Q = require('q'),
     C = require('spacebox-common')
 
@@ -37,7 +38,7 @@ extend(WSController.prototype, {
         this.setupConnectionCallbacks()
         this.ctx.info({ account: this.auth.account }, "ws.connected")
 
-        this.visibility = new Visibility(this.auth)
+        this.visibility = new Visibility(this.auth, this.ctx)
 
         // We listen for updates so that we don't
         // miss any updates while we fetch the
@@ -69,7 +70,7 @@ extend(WSController.prototype, {
             this.ctx.error({ err: e, command: message }, 'fatal error handling command')
         }
     },
-    sendState: function(ts, key, patch) {
+    sendState: WTF.trace.instrument(function(ts, key, patch) {
         var values = this.visibility.rewriteProperties(key, patch)
         if (values.length === 0)
             return
@@ -81,9 +82,9 @@ extend(WSController.prototype, {
             timestamp: ts,
             state: values
         })
-    },
+    }, 'Controller#sendState'),
     send: function(obj) {
-        this.ctx.trace({ send: obj }, 'ws.send')
+        this.ctx.trace({ send: obj, account: this.auth.account }, 'ws.send')
         if (this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify(obj))
         } else {
@@ -103,7 +104,7 @@ extend(WSController.prototype, {
         //console.log(key, patch)
         this.sendState(ts, key, patch)
     },
-    onWorldTick: function(msg) {
+    onWorldTick: WTF.trace.instrument(function(msg) {
         var self = this,
             currentTick = msg.ts
 
@@ -115,5 +116,5 @@ extend(WSController.prototype, {
                 process.exit()
             }
         })
-    }
+    }, 'Controller#onWorldTick')
 })

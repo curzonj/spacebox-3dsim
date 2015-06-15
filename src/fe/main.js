@@ -6,6 +6,7 @@ var WebSockets = require("ws"),
     bodyParser = require('body-parser'),
     uriUtils = require('url'),
     worldState = require('spacebox-common-native/lib/redis-state'),
+    WTF = require('wtf-shim'),
     C = require('spacebox-common')
 
 C.logging.configure('firehose')
@@ -39,6 +40,7 @@ var WebSocketServer = WebSockets.Server,
 var Controller = require('./ws.js')
 
 worldState.loadWorld().then(function() {
+    WTF.trace.node.start({ })
     server.listen(port)
     wss.on('connection', function(ws) {
         new Controller(ws)

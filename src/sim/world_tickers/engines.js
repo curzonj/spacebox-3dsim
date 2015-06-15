@@ -12,13 +12,6 @@ function buildCurrentDirection(direction, orientationQ) {
     return direction.set(0, 0, 1).applyQuaternion(orientationQ).normalize()
 }
 
-function assertVector(v) {
-    if (v === undefined || v === null || isNaN(v.x) || isNaN(v.y) || isNaN(v.z))
-        throw new Error("invalid vector: " + JSON.stringify(v))
-
-    return v
-}
-
 function validAcceleration(ship, desired) {
     var max = ship.systems.engine.maxThrust
 
@@ -353,9 +346,8 @@ var funcs = {
                 return
             }
 
-            assertVector(ship.position)
-            assertVector(ship.facing)
-            assertVector(system.lookAt)
+            C.assertVector(ship.position)
+            C.assertVector(system.lookAt)
 
             th.buildVector(position, ship.position)
             th.buildVector(target, system.lookAt)
@@ -391,7 +383,7 @@ var funcs = {
                 systems: {
                     engine: {
                         theta: theta,
-                        thetaAxis: assertVector(th.explodeVector(rotationCrossVector))
+                        thetaAxis: C.assertVector(th.explodeVector(rotationCrossVector))
                     }
                 }
             }
@@ -428,12 +420,12 @@ var funcs = {
 
             var q = orientationQ
             return {
-                facing: assertVector({
+                facing: {
                     x: q.x,
                     y: q.y,
                     z: q.z,
                     w: q.w,
-                })
+                }
             }
         }
     }(),
@@ -469,7 +461,7 @@ var funcs = {
             }
 
             return {
-                velocity: assertVector(th.explodeVector(velocityV))
+                velocity: C.assertVector(th.explodeVector(velocityV))
             }
         }
     }(),

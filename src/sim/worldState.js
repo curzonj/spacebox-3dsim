@@ -5,6 +5,7 @@ var merge = require('spacebox-common-native/lib/state_merge')
 var storage = {}
 
 var self = module.exports = {
+    storage: storage,
     get: function(key) {
         return storage[key]
     },

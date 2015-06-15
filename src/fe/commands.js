@@ -5,11 +5,13 @@ var Q = require('q'),
 
 var processors = {};
 processors.debug = function(ctx, msg, h) {
-    return h.visibility
+    var result = C.deepMerge(h.visibility, {})
+    delete result.ctx
+    return result
 }
 
 function send_error(ctx, e, ws, request_id) {
-    ctx.log('3dsim', 'error handling command: ', e, e.stack)
+    ctx.error({ err: e }, 'error handling command')
 
     var details
 
@@ -30,14 +32,12 @@ function send_error(ctx, e, ws, request_id) {
 module.exports = {
     dispatch: function(msg, info) {
         var request_id = msg.request_id,
-            ctx = info.ctx,
+            ctx = info.ctx.child({ request_id: request_id }),
             cmd = msg.command
-
-        ctx.prefix.push("req_id=" + request_id)
 
         delete msg.request_id
 
-        ctx.log('3dsim', msg);
+        ctx.trace({ msg: msg }, 'websocket command');
 
         try {
             if (processors.hasOwnProperty(cmd) && typeof processors[cmd] == 'function') {

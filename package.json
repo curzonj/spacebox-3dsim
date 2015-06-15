@@ -8,6 +8,7 @@
   "dependencies": {
     "spacebox-common": "curzonj/spacebox-nodejs-common",
     "spacebox-common-native": "curzonj/spacebox-nodejs-common-native",
+    "wtf-shim": "curzonj/wtf-shim",
     "measured": "latest",
     "express": "latest",
     "ws": "latest",
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "require-dir": "^0.1.0",
+    "tracing-framework": "latest",
     "gulp-jsbeautifier": "latest",
     "gulp-jshint": "latest",
     "jshint-stylish": "latest",
