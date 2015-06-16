@@ -1,10 +1,12 @@
 'use strict';
 
-var merge = require('spacebox-common-native/lib/state_merge')
+var merge = require('spacebox-common-native/src/state_merge')
+var EventEmitter = require('events').EventEmitter
 
 var storage = {}
 
 var self = module.exports = {
+    events: new EventEmitter(),
     storage: storage,
     get: function(key) {
         return storage[key]
@@ -28,7 +30,12 @@ var self = module.exports = {
     },
 
     loadFromRedis: function(redis) {
-        return merge.loadFromRedis(redis, storage)
+        redis.on('ready', function() {
+            merge.loadFromRedis(redis, storage).
+            then(function() {
+                self.events.emit('worldloaded')
+            }).done()
+        })
     }
 }
 

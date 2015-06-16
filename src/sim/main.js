@@ -7,7 +7,10 @@ var EventEmitter = require('events').EventEmitter,
     config = require('../config'),
     worldState = require('./worldState'),
     Q = require('q'),
+    zlib = require('zlib'),
     WTF = require('wtf-shim')
+
+Q.longStackSupport = true
 
 C.logging.configure('3dsim')
 
@@ -18,12 +21,15 @@ C.stats.defineAll({
     gameLoopDelay: 'histogram',
     gameLoopJitter: 'histogram',
     gameLoop: 'timer',
+    statePublish: 'timer',
     worldTick: 'timer',
 })
 
 var tickers = require("./world_tickers/load_all.js"),
     worldTickers = tickers.fns,
     eventReducers = tickers.reducers
+
+var gameLoopInputs, _currentTick, gameLoopTimer
 
 var self  = {
     mergePatch: function(changeSet, key, input) {
@@ -38,22 +44,31 @@ var self  = {
     },
 
     runWorldTicker: function() {
-        this.gameLoopBound = this.gameLoop.bind(this)
-        this._currentTick = new Date().getTime()
-        setTimeout(this.gameLoopBound, config.game.tickInterval)
+        if (gameLoopInputs)
+            Q(gameLoopInputs).fail(function(e) {
+                ctx.warn({ err: e }, "failure on previous gameLoopInputs")
+            })
+
+        gameLoopInputs = Q([])
+        _currentTick = Date.now()
+        gameLoopTimer = setTimeout(self.gameLoop, config.game.tickInterval)
+
+        ctx.info("world ticker running")
     },
 
-    worldTick: function(tickNumber, changeSet) {
+    worldTick: WTF.trace.instrument(function(tickNumber, changeSet) {
         var tickTimer = C.stats.worldTick.start()
-        var events = {},
-            self = this
+        var events = {}
 
+        ctx.logger.fields.tick_ts = tickNumber
         worldState.forEach(function(key, ship) {
+            ctx.logger.fields.obj_uuid = key
+
             worldTickers.forEach(function(fn, i) {
                 var result
 
                 try {
-                    result = fn(tickNumber, ship)
+                    result = fn(tickNumber, ship, ctx)
 
                     if (result !== undefined) {
                         if (result.patch !== undefined)
@@ -71,7 +86,8 @@ var self  = {
                     console.log(e.stack)
                 }
             })
-        }, this)
+        })
+        delete ctx.logger.fields.obj_uuid
 
         Object.keys(events).forEach(function(key) {
             var event_types = events[key],
@@ -91,73 +107,113 @@ var self  = {
                     console.log("failed to process worldTick event handler")
                     console.log(e.stack)
                 }
-            }, this)
-        }, this)
+            })
+        })
+        delete ctx.logger.fields.tick_ts
 
         tickTimer.end()
 
         return events
-    },
+    }, 'worldTick'),
 
     getInputs: function() {
         var query_t = WTF.trace.events.createScope("getInputs:query")
-        var parse_t = WTF.trace.events.createScope("getInputs:parse")
         var scope
 
         return function() {
             scope = query_t()
-            var range_t = WTF.trace.beginTimeRange("getInputs")
 
-            return WTF.trace.leaveScope(scope, 
-            redis.llen("commands").
-            then(function(len) {
+            var range_t = WTF.trace.beginTimeRange("LLEN commands")
+            var p = redis.llen("commands").
+            tap(function() {
+                WTF.trace.endTimeRange(range_t)
+            }).then(function(len) {
                 if (len === 0)
                     return []
                 
+                var range_t = WTF.trace.beginTimeRange("LRANGE LTRIM commands")
                 scope = query_t()
-                return WTF.trace.leaveScope(scope, 
-                redis.multi().
+                var p= redis.multi().
                 lrange("commands", 0, len - 1).
                 ltrim("commands", len, -1).
                 exec().
-                then(function(replies) {
-                    scope = parse_t()
-                    ctx.trace({ commands: replies }, 'redis.commands')
-                    return WTF.trace.leaveScope(scope, 
-                    replies[0].map(function(s) {
+                tap(function() {
+                    WTF.trace.endTimeRange(range_t)
+                }).then(function(replies) {
+                    var commands = replies[0].map(function(buffer) {
+                        var s = buffer.toString()
+
                         try {
                             return JSON.parse(s)
                         } catch (e) {
                             console.log('invalid command', s, e)
                         }
-                    }))
-                }))
-            }).fin(function() {
-                WTF.trace.endTimeRange(range_t)
-            }))
+                    })
+                    ctx.trace({ commands: commands }, 'redis.commands')
+                    return commands
+                })
+
+                return WTF.trace.leaveScope(scope, p)
+            })
+            return WTF.trace.leaveScope(scope, p)
         }
+    }(),
+
+    publishState: function() {
+        return WTF.trace.instrument(function(storage, tickNumber, changeSet, events) {
+            return Q.all([
+                // JSON.stringify on storage every tick is not performant
+                // nor scalable, but it's good enough until we implement
+                // sim sharding which will completely change this section
+                Q.nfcall(zlib.gzip, new Buffer(JSON.stringify(storage))).
+                then(function(compressed) {
+                    var range_t = WTF.trace.beginTimeRange("SET worldstate")
+                    return redis.set('worldstate', compressed).
+                    tap(function() {
+                        WTF.trace.endTimeRange(range_t)
+                    })
+                }),
+                Q.nfcall(zlib.gzip, new Buffer(JSON.stringify({
+                    ts: tickNumber,
+                    changes: changeSet,
+                    events: events
+                }))).
+                then(function(compressed) {
+                    var range_t = WTF.trace.beginTimeRange("PUBLISH worldstate")
+                    return redis.publish("worldstate", compressed).
+                    tap(function() {
+                        WTF.trace.endTimeRange(range_t)
+                    })
+                })
+            ])
+        }, 'publishState')
     }(),
 
     gameLoop: function() {
         var game_loop_t = WTF.trace.events.createScope("gameLoop")
-        var tickers_t = WTF.trace.events.createScope("worldTickers")
-        var inputs = Q([])
+        var merge_t = WTF.trace.events.createScope("stateMerge")
 
         return function() {
-            var range_t = WTF.trace.beginTimeRange("gameLoop"),
-                startedAt = new Date().getTime(),
-                tickNumber = this._currentTick = this._currentTick + config.game.tickInterval
+            _currentTick = _currentTick + config.game.tickInterval
+
+            var startedAt = Date.now()
+            var tickNumber = _currentTick
+            var range_t = WTF.trace.beginTimeRange("gameLoop_"+tickNumber)
 
             var jitter = startedAt - tickNumber
             C.stats.gameLoopJitter.update(jitter)
 
-            inputs.then(function(changesIn) {
-                inputs = self.getInputs()
-
+            gameLoopInputs.then(function(changesIn) {
                 var game_loop_scope = game_loop_t()
                 var changeSet = {}
 
-                var tickers_scope = tickers_t()
+                // Start to fetch gameLoopInputs for the next tick
+                gameLoopInputs = self.getInputs()
+
+                // These are so small and few compared
+                // to the simulator changeSet, that they
+                // don't impact the profile more than the
+                // overhead of tracing it
                 changesIn.forEach(function(c) {
                     worldState.applyPatch(c.uuid, c.patch)
                     self.mergePatch(changeSet, c.uuid, c.patch)
@@ -165,38 +221,47 @@ var self  = {
 
                 var events = self.worldTick(tickNumber, changeSet)
 
+                var merge_scope = merge_t()
                 Object.keys(changeSet).forEach(function(k) {
                     worldState.applyPatch(k, changeSet[k])
                 })
-                WTF.trace.leaveScope(tickers_scope);
+                WTF.trace.leaveScope(merge_scope)
 
-                Q.all([
-                    redis.set('worldstate', JSON.stringify(worldState.storage)),
-                    redis.publish("worldstate", JSON.stringify({
-                        ts: tickNumber,
-                        changes: changeSet,
-                        events: events
-                    }))
-                ]).done()
+                var publishAt = Date.now()
 
-                var now = new Date().getTime()
-                C.stats.gameLoop.update(now - startedAt)
-                var delay = tickNumber + config.game.tickInterval - now
-                if (delay < 0)
-                    delay = 0
+                return WTF.trace.leaveScope(game_loop_scope,
+                self.publishState(worldState.storage, tickNumber, changeSet, events).
+                then(function() {
+                    C.stats.statePublish.update(Date.now() - publishAt)
+                    C.stats.gameLoop.update(Date.now() - startedAt)
 
-                C.stats.gameLoopDelay.update(delay)
-                setTimeout(self.gameLoopBound, delay)
-                WTF.trace.leaveScope(game_loop_scope)
-                WTF.trace.endTimeRange(range_t)
+                    var delay = tickNumber + config.game.tickInterval - Date.now()
+                    if (delay < 0)
+                        delay = 0
+                    C.stats.gameLoopDelay.update(delay)
+                    gameLoopTimer = setTimeout(self.gameLoop, delay)
+
+                    WTF.trace.endTimeRange(range_t)
+                }))
+            }).fail(function(e) {
+                ctx.fatal({ err: e }, 'error in the gameLoop')
+
+                if (redis.ready)
+                    self.runWorldTicker()
             }).done()
         }
     }()
 }
 
-worldState.loadFromRedis(redis).
-then(function() {
-    WTF.trace.node.start({ })
+WTF.trace.node.start({ })
+
+redis.on('error', function() {
+    if (gameLoopTimer)
+        clearTimeout(gameLoopTimer)
+})
+
+worldState.events.on('worldloaded', function() {
     self.runWorldTicker()
-    ctx.info("server ready")
-}).done()
+})
+
+worldState.loadFromRedis(redis)

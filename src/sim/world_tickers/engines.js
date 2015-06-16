@@ -48,7 +48,7 @@ var move_to_point = function() {
         currentDirection = new THREE.Vector3(),
         orientationQ = new THREE.Quaternion()
 
-    return function(ship, point, targetMoving) {
+    return function(ctx, ship, point, targetMoving) {
         var accel = 0,
             system = ship.systems.engine,
             maxThrust = system.maxThrust,
@@ -82,7 +82,7 @@ var move_to_point = function() {
                     ((2 * d) / maxThrustForMath)
                 ) + 0.5)
         } else if (d < CONST_fpErrorMargin) {
-            //console.log("moveTo complete")
+            ctx.trace({ distance: d }, "moveTo complete")
             return {
                 systems: {
                     engine: {
@@ -112,10 +112,10 @@ var move_to_point = function() {
 
             // TODO allow non-max thrusts
             if ((velocity + maxThrust) > maxVtoTarget) {
-                //console.log('going fast enough, breaking', brakingTheta, position, maxVtoTarget, velocity, d)
+                ctx.trace({ stuff: [ brakingTheta, position, maxVtoTarget, velocity, d ]}, 'going fast enough, breaking')
                 target.copy(brakingLookAt)
             } else {
-                //console.log('accelerating', velocity, velocityV, target)
+                ctx.trace({ stuff: [ velocity, velocityV, target ]}, 'accelerating')
                 // we will rotate towards the target
                 if (theta < CONST_fpErrorMargin || (targetMoving && theta < Math.PI / 2)) {
                     //we are still aligned for thrust
@@ -123,7 +123,7 @@ var move_to_point = function() {
                 }
             }
         } else {
-            //console.log("aligned for stopping, staying that way", brakingTheta, position, maxBrakeVelocity, velocity, d)
+            ctx.trace({ stuff: [ brakingTheta, position, maxBrakeVelocity, velocity, d ] }, "aligned for stopping, staying that way")
             // If we are aligned for breaking, don't try to look at the target
             target.copy(brakingLookAt)
 
@@ -219,9 +219,9 @@ var funcs = {
             }
         }
     }(),
-    handle_moveTo: function(ship) {
+    handle_moveTo: function(ship, ctx) {
         //var interceptPoint = new THREE.Vector3().subVectors(position, target).setLength(3).add(target)
-        move_to_point(ship, ship.systems.engine.moveTo, false)
+        return move_to_point(ctx, ship, ship.systems.engine.moveTo, false)
     },
     handle_orbit: function() {
         var fromTarget = new THREE.Vector3(),
@@ -235,7 +235,7 @@ var funcs = {
             currentDiff = new THREE.Vector3(),
             orientationQ = new THREE.Quaternion()
 
-        return function(ship) {
+        return function(ship, ctx) {
             var orbitTarget = worldState.get(ship.systems.engine.orbitTarget)
             if (orbitTarget === undefined || orbitTarget.tombstone === true) {
                 return {
@@ -312,7 +312,7 @@ var funcs = {
                     accel = vNot * Math.sin(theta4) / Math.sin(theta3)
 
                     if (isNaN(accel)) {
-                        console.log("handle_orbit: accel is NaN")
+                        ctx.warn("handle_orbit: accel is NaN")
                         return
                     }
                 }
@@ -490,7 +490,7 @@ var funcs = {
             }
         }
     }(),
-    worldTick: function(tickMs, ship) {
+    worldTick: function(tickMs, ship, ctx) {
         if (ship.type !== 'vessel')
             return
         if (ship.systems.engine === undefined)
@@ -542,14 +542,18 @@ var funcs = {
         // instead of using queueChangeOut in each command
         cmds.forEach(function(cmd) {
             try {
-                var result = funcs["handle_" + cmd](pseudoState)
+                var result = funcs["handle_" + cmd](pseudoState, ctx)
                 if (result !== undefined && result !== null)
                     applyPatch(result)
             } catch (e) {
-                console.log(e.stack)
-                throw new Error("in handle_" + cmd + ": " + e.message)
+                ctx.error({ error: e, handler: cmd }, 'error in engine handler')
+                throw e
             }
         })
+
+        // Other parts should be logging the specifics, and this will
+        // be duplicated in other places down stream too generally
+        //ctx.trace({ patch: patch, state: engine_state }, 'engines#worldTick')
 
         return {
             patch: patch

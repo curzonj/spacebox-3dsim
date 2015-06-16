@@ -5,9 +5,7 @@ var Q = require('q'),
 
 var processors = {};
 processors.debug = function(ctx, msg, h) {
-    var result = C.deepMerge(h.visibility, {})
-    delete result.ctx
-    return result
+    return h.visibility.dataCopy()
 }
 
 function send_error(ctx, e, ws, request_id) {

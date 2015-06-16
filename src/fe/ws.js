@@ -5,7 +5,7 @@ var EventEmitter = require('events').EventEmitter,
     util = require('util'),
     uriUtils = require('url'),
     WebSocket = require('ws'),
-    worldState = require('spacebox-common-native/lib/redis-state'),
+    worldState = require('spacebox-common-native/src/redis-state'),
     dispatcher = require('./commands'),
     Visibility = require('./visibility.js'),
     WTF = require('wtf-shim'),
@@ -35,26 +35,36 @@ extend(WSController.prototype, {
         this.ws.on('close', this.onConnectionClosed.bind(this))
     },
     onConnectionOpen: function() {
-        this.setupConnectionCallbacks()
         this.ctx.info({ account: this.auth.account }, "ws.connected")
 
         this.visibility = new Visibility(this.auth, this.ctx)
 
-        // We listen for updates so that we don't
-        // miss any updates while we fetch the
-        // full state.
-        // TODO updates need to be queued so they
-        // are only sent after the full state is sent
-        worldState.addListener(this)
+        if (!worldState.loaded()) {
+            this.ctx.error("world state not loaded from redis")
+            this.ws.close()
+        }
 
-        this.sendWorldState()
+        this.setupConnectionCallbacks()
+
+        // Because node is single threaded, and we don't
+        // do anything async in here, no changes will be
+        // processed until we finish sending the worldState
+        this.onWorldTickBound = this.onWorldTick.bind(this)
+        worldState.events.on('worldtick', this.onWorldTickBound)
+
+        this.onWorldResetBound = this.onWorldReset.bind(this)
+        worldState.events.on('worldreset', this.onWorldResetBound)
+
+        this.syncInitialWorldState()
+
         this.send({
             type: 'connectionReady'
         })
         this.ctx.debug('world state sync complete')
     },
     onConnectionClosed: function() {
-        worldState.removeListener(this)
+        worldState.events.removeListener('worldtick', this.onWorldTickBound)
+        worldState.events.removeListener('worldreset', this.onWorldResetBound)
 
         this.ctx.info('disconnected')
     },
@@ -91,18 +101,15 @@ extend(WSController.prototype, {
             this.ctx.error({ state: this.ws.readyState }, "failed to send message, websocket closed or closing")
         }
     },
-    sendWorldState: function() {
+    syncInitialWorldState: WTF.trace.instrument(function() {
         this.ctx.debug('sending world state')
-            // TODO the worldstate itself should have a better sense of time
-        var ts = worldState.currentTick()
-
-        this.visibility.loadInitialWorldState(function(obj) {
+        this.visibility.loadInitialWorldState(function(ts, obj) {
             this.sendState(ts, obj.uuid, obj)
         }.bind(this))
-    },
-    onWorldStateChange: function(ts, key, patch) {
-        //console.log(key, patch)
-        this.sendState(ts, key, patch)
+    }, 'Controller#syncInitialWorldState'),
+    onWorldReset: function() {
+        this.ctx.warn("lost connection to redis, closing")
+        this.ws.close()
     },
     onWorldTick: WTF.trace.instrument(function(msg) {
         var self = this,
@@ -110,7 +117,7 @@ extend(WSController.prototype, {
 
         Object.keys(msg.changes).forEach(function(uuid) {
             try {
-                self.onWorldStateChange(currentTick, uuid, msg.changes[uuid])
+                self.sendState(currentTick, uuid, msg.changes[uuid])
             } catch (e) {
                 console.log("onWorldStateChange failed", uuid, msg.changes[uuid], e, e.stack)
                 process.exit()
