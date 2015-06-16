@@ -1,8 +1,10 @@
 'use strict';
 
-var C = require('spacebox-common'),
-    th = require('spacebox-common/src/three_helpers.js'),
-    THREE = require('three')
+var C = require('spacebox-common')
+var th = require('spacebox-common/src/three_helpers.js')
+var THREE = require('three')
+
+var worldState = require('../worldState')
 
 function stopShooting() {
     return {
@@ -33,7 +35,7 @@ module.exports = function(gameLoop) {
         if (system === undefined || system.state !== "shoot")
             return
 
-        var target = gameLoop.get(system.target)
+        var target = worldState.get(system.target)
 
         if (target === undefined ||
             target.tombstone === true ||
