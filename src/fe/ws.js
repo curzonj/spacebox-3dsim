@@ -1,22 +1,22 @@
 'use strict';
 
-var EventEmitter = require('events').EventEmitter,
-    extend = require('extend'),
-    util = require('util'),
-    uriUtils = require('url'),
-    WebSocket = require('ws'),
-    worldState = require('spacebox-common-native/src/redis-state'),
-    dispatcher = require('./commands'),
-    Visibility = require('./visibility.js'),
-    WTF = require('wtf-shim'),
-    Q = require('q'),
-    C = require('spacebox-common')
+var EventEmitter = require('events').EventEmitter
+var extend = require('extend')
+var util = require('util')
+var uriUtils = require('url')
+var WebSocket = require('ws')
+var dispatcher = require('./commands')
+var Visibility = require('./visibility.js')
+var WTF = require('wtf-shim')
+var Q = require('q')
+var C = require('spacebox-common')
+var config = require('./config')
+var worldState = config.state
 
-var ctx = C.logging.create()
-var WSController = module.exports = function(ws) {
+var WSController = module.exports = function(ws, ctx) {
     this.ws = ws
     this.auth = ws.upgradeReq.authentication
-    this.ctx = ctx.child()
+    this.ctx = ctx
 
     try {
         this.onConnectionOpen()

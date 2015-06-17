@@ -4,7 +4,7 @@ var EventEmitter = require('events').EventEmitter,
     extend = require('extend'),
     util = require('util'),
     C = require('spacebox-common'),
-    config = require('../config'),
+    config = require('./config'),
     worldState = require('./worldState'),
     Q = require('q'),
     zlib = require('zlib'),
@@ -12,12 +12,10 @@ var EventEmitter = require('events').EventEmitter,
 
 Q.longStackSupport = true
 
-C.logging.configure('3dsim')
+var ctx = C.logging.create('3dsim')
+var redis = require('spacebox-common-native').buildRedis(ctx)
 
-var redis = require('spacebox-common-native').buildRedis(),
-    ctx = C.logging.create()
-
-C.stats.defineAll({
+ctx.measure({
     gameLoopDelay: 'histogram',
     gameLoopJitter: 'histogram',
     gameLoop: 'timer',
@@ -57,7 +55,7 @@ var self  = {
     },
 
     worldTick: WTF.trace.instrument(function(tickNumber, changeSet) {
-        var tickTimer = C.stats.worldTick.start()
+        var tickTimer = ctx.worldTick.start()
         var events = {}
 
         ctx.logger.fields.tick_ts = tickNumber
@@ -201,7 +199,7 @@ var self  = {
             var range_t = WTF.trace.beginTimeRange("gameLoop_"+tickNumber)
 
             var jitter = startedAt - tickNumber
-            C.stats.gameLoopJitter.update(jitter)
+            ctx.gameLoopJitter.update(jitter)
 
             gameLoopInputs.then(function(changesIn) {
                 var game_loop_scope = game_loop_t()
@@ -232,13 +230,13 @@ var self  = {
                 return WTF.trace.leaveScope(game_loop_scope,
                 self.publishState(worldState.storage, tickNumber, changeSet, events).
                 then(function() {
-                    C.stats.statePublish.update(Date.now() - publishAt)
-                    C.stats.gameLoop.update(Date.now() - startedAt)
+                    ctx.statePublish.update(Date.now() - publishAt)
+                    ctx.gameLoop.update(Date.now() - startedAt)
 
                     var delay = tickNumber + config.game.tickInterval - Date.now()
                     if (delay < 0)
                         delay = 0
-                    C.stats.gameLoopDelay.update(delay)
+                    ctx.gameLoopDelay.update(delay)
                     gameLoopTimer = setTimeout(self.gameLoop, delay)
 
                     WTF.trace.endTimeRange(range_t)

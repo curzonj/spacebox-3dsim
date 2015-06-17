@@ -2,7 +2,7 @@
 
 var CONST_fpErrorMargin = 0.000001
 
-var config = require('../../config.js'),
+var config = require('../config.js'),
     worldState = require('../worldState'),
     th = require('spacebox-common/src/three_helpers.js'),
     C = require('spacebox-common'),

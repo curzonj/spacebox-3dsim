@@ -1,12 +1,13 @@
 'use strict';
 
-var extend = require('extend'),
-    Q = require('q'),
-    C = require('spacebox-common'),
-    config = require('../config.js'),
-    worldState = require('spacebox-common-native/src/redis-state'),
-    WTF = require('wtf-shim'),
-    kdTree = require('../../vendor/kdTree.js')
+var extend = require('extend')
+var Q = require('q')
+var C = require('spacebox-common')
+var WTF = require('wtf-shim')
+var kdTree = require('../../vendor/kdTree.js')
+var config = require('./config')
+var ctx = config.ctx
+var worldState = config.state
 
 var safeAttrs = [
     'type', 'position', 'chunk', 'velocity',
