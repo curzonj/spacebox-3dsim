@@ -8,6 +8,10 @@ processors.debug = function(ctx, msg, h) {
     return h.visibility.dataCopy()
 }
 
+processors.ping = function(ctx, msg, h) {
+    return 'alive'
+}
+
 function send_error(ctx, e, ws, request_id) {
     ctx.error({ err: e }, 'error handling command')
 
