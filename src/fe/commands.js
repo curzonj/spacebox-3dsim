@@ -37,6 +37,9 @@ module.exports = {
             ctx = info.ctx.child({ request_id: request_id }),
             cmd = msg.command
 
+        if (cmd === 'ping')
+            return
+
         delete msg.request_id
 
         ctx.trace({ msg: msg }, 'websocket command');
