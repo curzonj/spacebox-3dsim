@@ -72,20 +72,20 @@ worldState.subscribe();
 
             ctx.trace({
                 message: message,
-                accounts: listeners.map(function(ws) {
-                    return ws.upgradeReq.authentication.account
+                agent_ids: listeners.map(function(ws) {
+                    return ws.upgradeReq.authentication.agent_id
                 })
             }, 'received tech message')
 
             listeners.forEach(function(ws) {
-                var account = ws.upgradeReq.authentication.account
+                var agent_id = ws.upgradeReq.authentication.agent_id
 
                 ctx.trace({
-                    account: account,
+                    agent_id: agent_id,
                     message: message
                 }, 'publishing')
 
-                if (ws.readyState == WebSockets.OPEN && message.account == account) {
+                if (ws.readyState == WebSockets.OPEN && message.agent_id == agent_id) {
                     ws.send(JSON.stringify(message))
                 }
             })

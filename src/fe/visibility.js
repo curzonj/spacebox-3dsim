@@ -11,7 +11,7 @@ var worldState = config.state
 
 var safeAttrs = [
     'type', 'position', 'chunk', 'velocity',
-    'facing', 'tombstone', 'account', 'tech',
+    'facing', 'tombstone', 'agent_id', 'tech',
     'model_name', 'model_scale', 'health',
     'solar_system', 'name', 'tech_type', 'size'
 ]
@@ -58,7 +58,7 @@ var Class = module.exports = function(auth, ctx) {
     this.visibleKeys = {}
 
     // spawn also depends on sightKeys to know
-    // how many vessels the account has out so it can
+    // how many vessels the agent_id has out so it can
     // limit them. This is the keys we own
     this.sightKeys = {} // == true
 
@@ -94,7 +94,7 @@ extend(Class.prototype, {
         Object.keys(data).forEach(function(k) {
             var obj = data[k]
 
-            if (obj.account == self.auth.account)
+            if (obj.agent_id == self.auth.agent_id)
                 self.sightKeys[obj.uuid] = {}
 
             self.updatePositions(obj.uuid, obj)
@@ -140,15 +140,15 @@ extend(Class.prototype, {
 
         point = oldPoint = this.points[key]
 
-        if (patch.account !== undefined &&
-            patch.account == this.auth.account &&
+        if (patch.agent_id !== undefined &&
+            patch.agent_id == this.auth.agent_id &&
             this.sightKeys[key] === undefined)
             this.sightKeys[key] = {}
 
         var hasSightKey = (this.sightKeys[key] !== undefined),
             privileged = this.auth.privileged || hasSightKey
 
-        this.ctx.trace({ account: this.auth.account, key: key, wasVisible: before, privileged: privileged, visibleBy: this.visibleKeys[key], previous: this.points[key] }, 'checkVisibility')
+        this.ctx.trace({ agent_id: this.auth.agent_id, key: key, wasVisible: before, privileged: privileged, visibleBy: this.visibleKeys[key], previous: this.points[key] }, 'checkVisibility')
 
         if (patch.chunk !== undefined || patch.solar_system !== undefined || patch.tombstone !== undefined) {
             this.updatePositions(key, patch)
@@ -311,7 +311,7 @@ extend(Class.prototype, {
             visible = this.checkVisibility(key, patch)
 
         //console.log('rewriteProperties', this.auth, key, patch, visible)
-        this.ctx.trace({ account: this.auth.account, key: key, patch: patch, visible: visible }, 'rewriteProperties')
+        this.ctx.trace({ agent_id: this.auth.agent_id, key: key, patch: patch, visible: visible }, 'rewriteProperties')
 
         if (this.sightKeys[key] !== undefined &&
             visible.previous !== undefined && (

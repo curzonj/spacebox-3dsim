@@ -35,7 +35,7 @@ extend(WSController.prototype, {
         this.ws.on('close', this.onConnectionClosed.bind(this))
     },
     onConnectionOpen: function() {
-        this.ctx.info({ account: this.auth.account }, "ws.connected")
+        this.ctx.info({ agent_id: this.auth.agent_id }, "ws.connected")
 
         this.visibility = new Visibility(this.auth, this.ctx)
 
@@ -70,7 +70,7 @@ extend(WSController.prototype, {
     },
     onWSMessageReceived: function(message) {
         try {
-            if (this.auth.account !== undefined) {
+            if (this.auth.agent_id !== undefined) {
                 var parsed = JSON.parse(message)
                 dispatcher.dispatch(parsed, this)
             } else {
@@ -94,7 +94,7 @@ extend(WSController.prototype, {
         })
     }, 'Controller#sendState'),
     send: function(obj) {
-        this.ctx.trace({ send: obj, account: this.auth.account }, 'ws.send')
+        this.ctx.trace({ send: obj, agent_id: this.auth.agent_id }, 'ws.send')
         if (this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify(obj))
         } else {
