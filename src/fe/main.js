@@ -11,6 +11,7 @@ var C = require('spacebox-common')
 var config = require('./config')
 var ctx = config.ctx
 var worldState = config.state
+var buildRedis = require('spacebox-common-native').buildRedis
 
 Q.longStackSupport = true
 
@@ -40,13 +41,60 @@ var Controller = require('./ws.js')
 
 WTF.trace.node.start({ })
 
+var listeners = []
+
 worldState.events.once('worldloaded', function() {
     server.listen(port)
     wss.on('connection', function(ws) {
+        listeners.push(ws)
+
         new Controller(ws, ctx)
+
+        ws.on('close', function() {
+            var i = listeners.indexOf(ws)
+            if (i > -1) {
+                listeners.splice(i, 1)
+            }
+        })
     })
 
     console.log('server ready')
 })
 
-worldState.subscribe()
+worldState.subscribe();
+
+(function() {
+    var redis = buildRedis(ctx)
+
+    redis.on('message', function(_, data) {
+        try {
+            var message = JSON.parse(data)
+
+            ctx.trace({
+                message: message,
+                accounts: listeners.map(function(ws) {
+                    return ws.upgradeReq.authentication.account
+                })
+            }, 'received tech message')
+
+            listeners.forEach(function(ws) {
+                var account = ws.upgradeReq.authentication.account
+
+                ctx.trace({
+                    account: account,
+                    message: message
+                }, 'publishing')
+
+                if (ws.readyState == WebSockets.OPEN && message.account == account) {
+                    ws.send(JSON.stringify(message))
+                }
+            })
+        } catch(e) {
+            ctx.error({ err: e, data: data }, 'failure processing tech message')
+        }
+    })
+
+    redis.on('ready', function() {
+        redis.subscribe('techmessages')
+    })
+})()
