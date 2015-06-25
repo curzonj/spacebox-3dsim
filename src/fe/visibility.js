@@ -13,7 +13,8 @@ var safeAttrs = [
     'type', 'position', 'chunk', 'velocity',
     'facing', 'tombstone', 'agent_id', 'tech',
     'model_name', 'model_scale', 'health',
-    'solar_system', 'name', 'tech_type', 'size'
+    'solar_system', 'name', 'tech_type', 'size',
+    'wormhole'
 ]
 
 function distance3d(v1, v2) {
@@ -108,11 +109,20 @@ extend(Class.prototype, {
         var self = this,
             tree = this.ourTrees[point.solar_system]
 
-        if (tree === undefined)
-            return false
+        var nearest
+        var is_visible = false
 
-        var nearest = tree.nearest(point, 1)[0][0]
-        var is_visible = (distance3d(nearest, point) <= nearest.range)
+        if (tree) {
+            nearest = tree.nearest(point, 1)
+
+            // The tree might be empty, I'm not sure
+            // if we garbage collect them
+            if (nearest.length > 0) {
+                nearest = nearest[0][0]
+                is_visible = (distance3d(nearest, point) <= nearest.range)
+            }
+        }
+
         var oldSightKey = this.visibleKeys[point.uuid]
 
         var i,l

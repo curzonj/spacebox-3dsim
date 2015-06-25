@@ -119,8 +119,12 @@ extend(WSController.prototype, {
             try {
                 self.sendState(currentTick, uuid, msg.changes[uuid])
             } catch (e) {
-                console.log("onWorldStateChange failed", uuid, msg.changes[uuid], e, e.stack)
-                process.exit()
+                self.ctx.error({ err: e, uuid: uuid, changes: msg.changes[uuid] }, 'onWorldStateChange failed')
+                if (process.env.PEXIT_ON_TOUGH_ERROR == '1')
+                    process.nextTick(function() {
+                        console.log("exiting for debugging per ENV['PEXIT_ON_TOUGH_ERROR']")
+                        process.exit()
+                    })
             }
         })
     }, 'Controller#onWorldTick')
