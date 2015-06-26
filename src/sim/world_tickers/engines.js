@@ -237,7 +237,10 @@ var funcs = {
 
         return function(ship, ctx) {
             var orbitTarget = worldState.get(ship.systems.engine.orbitTarget)
-            if (orbitTarget === undefined || orbitTarget.tombstone === true) {
+            if (orbitTarget === undefined ||
+                orbitTarget.tombstone === true ||
+                orbitTarget.solar_system !== ship.solar_system
+            ) {
                 return {
                     systems: {
                         engine: {

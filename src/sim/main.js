@@ -157,35 +157,44 @@ var self  = {
         }
     }(),
 
-    publishState: function() {
-        return WTF.trace.instrument(function(storage, tickNumber, changeSet, events) {
-            return Q.all([
-                // JSON.stringify on storage every tick is not performant
-                // nor scalable, but it's good enough until we implement
-                // sim sharding which will completely change this section
-                Q.nfcall(zlib.gzip, new Buffer(JSON.stringify(storage))).
-                then(function(compressed) {
-                    var range_t = WTF.trace.beginTimeRange("SET worldstate")
-                    return redis.set('worldstate', compressed).
-                    tap(function() {
-                        WTF.trace.endTimeRange(range_t)
-                    })
-                }),
-                Q.nfcall(zlib.gzip, new Buffer(JSON.stringify({
-                    ts: tickNumber,
-                    changes: changeSet,
-                    events: events
-                }))).
-                then(function(compressed) {
-                    var range_t = WTF.trace.beginTimeRange("PUBLISH worldstate")
-                    return redis.publish("worldstate", compressed).
-                    tap(function() {
-                        WTF.trace.endTimeRange(range_t)
-                    })
+    publishState: WTF.trace.instrument(function(storage, tickNumber, changeSet, events) {
+        return Q.all([
+            // JSON.stringify on storage every tick is not performant
+            // nor scalable, but it's good enough until we implement
+            // sim sharding which will completely change this section
+            Q.nfcall(zlib.gzip, new Buffer(JSON.stringify(storage))).
+            then(function(compressed) {
+                var range_t = WTF.trace.beginTimeRange("SET worldstate")
+                return redis.set('worldstate', compressed).
+                tap(function() {
+                    WTF.trace.endTimeRange(range_t)
                 })
-            ])
-        }, 'publishState')
-    }(),
+            }),
+            Q.fcall(function() {
+                var list = Object.keys(changeSet).filter(function(k) {
+                    var patch = changeSet[k]
+                    return (patch.tombstone === true && (patch.tombstone_cause === 'destroyed' || patch.tombstone_cause === 'despawned'))
+                }).map(function(k) { return k })
+
+                if (list.length > 0) {
+                    list.unshift('destroyed')
+                    return redis.rpush.apply(redis, list)
+                }
+            }),
+            Q.nfcall(zlib.gzip, new Buffer(JSON.stringify({
+                ts: tickNumber,
+                changes: changeSet,
+                events: events
+            }))).
+            then(function(compressed) {
+                var range_t = WTF.trace.beginTimeRange("PUBLISH worldstate")
+                return redis.publish("worldstate", compressed).
+                tap(function() {
+                    WTF.trace.endTimeRange(range_t)
+                })
+            })
+        ])
+    }, 'publishState'),
 
     gameLoop: function() {
         var game_loop_t = WTF.trace.events.createScope("gameLoop")
@@ -213,8 +222,13 @@ var self  = {
                 // don't impact the profile more than the
                 // overhead of tracing it
                 changesIn.forEach(function(c) {
-                    worldState.applyPatch(c.uuid, c.patch)
-                    self.mergePatch(changeSet, c.uuid, c.patch)
+                    var existing = worldState.get(c.uuid)
+
+                    // Ignore invalid new objects
+                    if (existing || c.patch.agent_id) {
+                        worldState.applyPatch(c.uuid, c.patch)
+                        self.mergePatch(changeSet, c.uuid, c.patch)
+                    }
                 })
 
                 var events = self.worldTick(tickNumber, changeSet)
@@ -260,6 +274,7 @@ redis.on('error', function() {
 
 worldState.events.on('worldloaded', function() {
     self.runWorldTicker()
+    worldState.runRequestHandler(ctx)
 })
 
 worldState.loadFromRedis(redis)

@@ -36,6 +36,24 @@ var self = module.exports = {
                 self.events.emit('worldloaded')
             }).done()
         })
+    },
+
+    runRequestHandler: function(ctx) {
+        var redis = require('spacebox-common-native').buildRedis(ctx)
+
+        function blpopLoop() {
+            redis.blpop('requests', 0).
+            then(function(result) {
+                var data = JSON.parse(result[1].toString())
+                return redis.rpush(data.response, JSON.stringify(storage[data.key] || null))
+            }).fail(function(e) {
+                ctx.error({ err: e })
+            }).fin(function() {
+                blpopLoop()
+            }).done()
+        }
+
+        blpopLoop()
     }
 }
 
