@@ -241,6 +241,7 @@ var funcs = {
                 orbitTarget.tombstone === true ||
                 orbitTarget.solar_system !== ship.solar_system
             ) {
+                ctx.warn({ orbitTarget: orbitTarget, ship: ship }, 'invalid orbit target')
                 return {
                     systems: {
                         engine: {
@@ -506,6 +507,7 @@ var funcs = {
                 // Be careful deepMerge doesn't give you a deep cloned
                 // object unless you use it just right
                 uuid: ship.uuid,
+                solar_system: ship.solar_system,
                 position: C.deepMerge(ship.position, {}),
                 chunk: C.deepMerge(ship.chunk, {}),
                 facing: C.deepMerge(ship.facing, {}),

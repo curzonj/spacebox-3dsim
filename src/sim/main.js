@@ -80,8 +80,12 @@ var self  = {
                             })
                     }
                 } catch (e) {
-                    console.log("failed to process worldTick handler")
-                    console.log(e.stack)
+                    ctx.error({ err: e }, "failed to process worldTick handler")
+                    if (process.env.PEXIT_ON_TOUGH_ERROR == '1')
+                        process.nextTick(function() {
+                            console.log("exiting for debugging per ENV['PEXIT_ON_TOUGH_ERROR']")
+                            process.exit()
+                        })
                 }
             })
         })
@@ -225,7 +229,7 @@ var self  = {
                     var existing = worldState.get(c.uuid)
 
                     // Ignore invalid new objects
-                    if (existing || c.patch.agent_id) {
+                    if (existing || c.patch.type) {
                         worldState.applyPatch(c.uuid, c.patch)
                         self.mergePatch(changeSet, c.uuid, c.patch)
                     }
@@ -257,6 +261,11 @@ var self  = {
                 }))
             }).fail(function(e) {
                 ctx.fatal({ err: e }, 'error in the gameLoop')
+                if (process.env.PEXIT_ON_TOUGH_ERROR == '1')
+                    process.nextTick(function() {
+                        console.log("exiting for debugging per ENV['PEXIT_ON_TOUGH_ERROR']")
+                        process.exit()
+                    })
 
                 if (redis.ready)
                     self.runWorldTicker()

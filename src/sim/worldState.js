@@ -44,8 +44,24 @@ var self = module.exports = {
         function blpopLoop() {
             redis.blpop('requests', 0).
             then(function(result) {
-                var data = JSON.parse(result[1].toString())
-                return redis.rpush(data.response, JSON.stringify(storage[data.key] || null))
+                var request = JSON.parse(result[1].toString())
+                var obj = storage[request.key]
+                var data
+
+                if (obj) {
+                    data = {
+                        systems: Object.keys(obj.systems)
+                    }
+
+                    var list = [ 'uuid', 'solar_system', 'position', 'velocity', 'agent_id' ]
+                    list.forEach(function(k) {
+                        data[k] = obj[k]
+                    })
+                } else {
+                    data = null
+                }
+
+                return redis.rpush(request.response, JSON.stringify(data))
             }).fail(function(e) {
                 ctx.error({ err: e })
             }).fin(function() {
